@@ -8,3 +8,5 @@ src/ParserTest/bin/
 src/ParserTest/obj/
 *.user
 *.lock.json
+src/InfoParser/obj/
+src/InfoParser/bin/
