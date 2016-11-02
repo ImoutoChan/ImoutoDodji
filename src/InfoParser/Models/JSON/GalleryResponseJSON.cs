@@ -1,62 +1,37 @@
-﻿using System.Collections.Generic;
-using System.Runtime.Serialization;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json;
+using NLog;
 
 namespace InfoParser.Models.JSON
 {
-    public enum GalleryCategory
+    public class Tag
     {
-        [EnumMember(Value = "Doujinshi")]
-        Doujinshi,
+        public string Namespace { get; set; }
 
-        [EnumMember(Value = "Manga")]
-        Manga,
+        public string Name { get; set; }
 
-        [EnumMember(Value = "Artist CG Sets")]
-        ArtistCgSets,
-
-        [EnumMember(Value = "Game CG Sets")]
-        GameCgSets,
-
-        [EnumMember(Value = "Western")]
-        Western,
-
-        [EnumMember(Value = "Image Sets")]
-        ImageSets,
-
-        [EnumMember(Value = "Non-H")]
-        NonH,
-
-        [EnumMember(Value = "Cosplay")]
-        Cosplay,
-
-        [EnumMember(Value = "Asian Porn")]
-        AsianPorn,
-
-        [EnumMember(Value = "Misc")]
-        Misc,
-
-        [EnumMember(Value = "Private")]
-        Private
     }
 
-    public class Gmetadata
+    public class Gallery
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
         [JsonProperty("gid")]
-        public int gid { get; set; }
+        public int Id { get; set; }
 
         [JsonProperty("token")]
-        public string token { get; set; }
+        public string Token { get; set; }
 
         [JsonProperty("archiver_key")]
-        public string archiver_key { get; set; }
+        public string ArchiverKey { get; set; }
 
         [JsonProperty("title")]
-        public string title { get; set; }
+        public string Title { get; set; }
 
         [JsonProperty("title_jpn")]
-        public string title_jpn { get; set; }
+        public string TitleJpn { get; set; }
 
         [JsonProperty("category")]
         public GalleryCategory Category { get; set; }
@@ -80,19 +55,37 @@ namespace InfoParser.Models.JSON
         public bool IsExpunged { get; set; }
 
         [JsonProperty("rating")]
-        public bool Rating { get; set; }
+        public double Rating { get; set; }
 
         [JsonProperty("torrentcount")]
         public string Torrentcount { get; set; }
 
         [JsonProperty("tags")]
-        public IList<string> Tags { get; set; }
+        public IList<string> TagStrings { get; set; }
+
+        public IEnumerable<Tag> Tags
+        {
+            get
+            {
+                return TagStrings.Select(ts =>
+                {
+                    var strings = ts.Split(new[] {":"}, StringSplitOptions.RemoveEmptyEntries);
+
+                    if (strings.Length == 1)
+                    {
+                        return new Tag { Namespace = "misc", Name = strings[0] };
+                    }
+
+                    return new Tag {Namespace = strings[0], Name = strings[1]};
+                });
+            }
+        }
     }
 
-    public class GalleryResponseJSON : JSONBase
+    public class GalleryResponseJson : JsonBase
     {
 
         [JsonProperty("gmetadata")]
-        public IList<Gmetadata> GalleryList { get; set; }
+        public IList<Gallery> GalleryList { get; set; }
     }
 }

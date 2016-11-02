@@ -3,9 +3,9 @@ using Newtonsoft.Json.Converters;
 
 namespace InfoParser.Models.JSON
 {
-    public class JSONBase
+    public class JsonBase
     {
-        static JSONBase()
+        static JsonBase()
         {
             JsonConvert.DefaultSettings = (() =>
             {
@@ -18,6 +18,11 @@ namespace InfoParser.Models.JSON
         public string ToJson()
         {
             return JsonConvert.SerializeObject(this);
+        }
+
+        public override string ToString()
+        {
+            return ToJson();
         }
     }
 }

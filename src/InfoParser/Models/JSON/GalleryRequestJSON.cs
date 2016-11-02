@@ -19,7 +19,7 @@ namespace InfoParser.Models.JSON
     ///    "namespace": 1
     ///  }
     /// </summary>
-    public class GalleryRequestJSON : JSONBase
+    public class GalleryRequestJson : JsonBase
     {
         /// <summary>
         /// "gdata"
@@ -44,21 +44,43 @@ namespace InfoParser.Models.JSON
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="galleries">int - gallery.id; string - gallery.key</param>
-        public GalleryRequestJSON(List<Tuple<int, string>> galleries)
+        /// <param name="galleries">
+        /// int - id; 
+        /// string - token.
+        /// 25 elements is maximum.
+        /// </param>
+        public GalleryRequestJson(List<Tuple<int, string>> galleries)
         {
-            if (!galleries.Any())
+            if (!galleries.Any() || galleries.Count > 25)
             {
-                throw new AggregateException(nameof(galleries));
+                throw new AggregateException($"List '{nameof(galleries)}' should contain [1;25] elements");
             }
 
-            GalleryList = galleries.Select(x =>
+            FillGalleries(galleries);
+        }
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="token"></param>
+        public GalleryRequestJson(int id, string token)
+        {
+            var list = new List<Tuple<int, string>> { new Tuple<int, string>(id, token) };
+            FillGalleries(list);
+        }
+
+        private void FillGalleries(List<Tuple<int, string>> galleries)
+        {
+            IList<IList<object>> gals = galleries.Select(x =>
             {
-                IList list = new List<object>();
+                IList<object> list = new List<object>();
                 list.Add(x.Item1);
                 list.Add(x.Item2);
                 return list;
-            }).ToList() as IList<IList<object>>;
+            }).ToList();
+
+            GalleryList = gals;
         }
-    }
+}
 }
