@@ -1,0 +1,5 @@
+Structure
+
+	(1) File management (folders, naming, coompression, structure, files, parsing)
+	(2) BD management (collections, (1) support)
+	(3) Parser (ex/e hentai, tag  parser, gallary selection)

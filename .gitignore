@@ -1,0 +1,10 @@
+*.suo
+.vs/
+src/DataAccess/obj/
+src/DataAccess/bin/
+src/DodjiParser/bin/
+src/DodjiParser/obj/
+src/ParserTest/bin/
+src/ParserTest/obj/
+*.user
+*.lock.json
