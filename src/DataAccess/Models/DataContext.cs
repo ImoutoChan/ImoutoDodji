@@ -14,7 +14,7 @@ namespace DataAccess.Models
 
         public DbSet<SourceFolder> SourceFolders { get; set; }
 
-        public DbSet<Collection> Collection { get; set; }
+        public DbSet<Collection> Collections { get; set; }
 
         public DbSet<Gallery> Galleries { get; set; } 
 
@@ -33,6 +33,19 @@ namespace DataAccess.Models
             modelBuilder.Entity<Tag>()
                 .HasIndex(ns => ns.Name)
                 .IsUnique(true);
+
+            modelBuilder.Entity<BindedTag>()
+                .HasIndex(bt => bt.GalleryId);
+            modelBuilder.Entity<BindedTag>()
+                .HasIndex(bt => bt.TagId);
+            modelBuilder.Entity<BindedTag>()
+                .HasIndex(bt => bt.NamespaceId);
+            modelBuilder.Entity<BindedTag>()
+                .HasIndex(bt => new { bt.TagId, bt.NamespaceId});
+            modelBuilder.Entity<BindedTag>()
+                .HasIndex(bt => new { bt.GalleryId, bt.NamespaceId });
+            modelBuilder.Entity<BindedTag>()
+                .HasKey(bt => new {bt.TagId, bt.GalleryId, bt.NamespaceId});
         }
     }
 

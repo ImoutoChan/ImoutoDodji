@@ -5,6 +5,7 @@
   },
 
   "dependencies": {
+    "DataAccess": "1.0.0-*",
     "DodjiParser": "1.0.0-*",
     "InfoParser": "1.0.0-*",
     "Microsoft.NETCore.App": {

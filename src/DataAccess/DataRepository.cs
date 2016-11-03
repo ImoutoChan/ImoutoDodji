@@ -28,9 +28,11 @@ namespace DataAccess
                 var dbTag = db.Tags.FirstOrDefaultAsync(x => x.Name == tagName);
                 if (dbTag == null)
                 {
-                    await CreateTag(tagName, db);
+                    //await CreateTag(tagName, db);
                 }
             }
+
+            return null;
         }
 
         #region Private methods

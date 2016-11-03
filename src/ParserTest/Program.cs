@@ -23,6 +23,8 @@ namespace ParserTest
             //await ParserTest();
 
             //FolderObserverTest();
+
+
         }
 
         private async static Task FolderObserverTest()
