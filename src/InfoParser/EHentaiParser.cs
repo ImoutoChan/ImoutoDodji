@@ -8,11 +8,8 @@ using System.Threading.Tasks;
 using InfoParser.Models.JSON;
 using Newtonsoft.Json;
 using NLog;
-using System.Collections;
-using System.Collections.Specialized;
 using System.Net;
 using HtmlAgilityPack;
-using System.Text.RegularExpressions;
 
 namespace InfoParser
 {
@@ -174,10 +171,23 @@ namespace InfoParser
             var galleryInfo = new GalleryInfo();
 
             var text = trNode.InnerHtml;
+            var previewNode = trNode.SelectSingleNode("td/div/div[@class=\"it2\"]/img");
 
-            var previewNode = trNode.SelectSingleNode("/div[@class=\"it2\"]/img");
-            galleryInfo.PreviewUrl = previewNode.Attributes["src"].Value;
-            galleryInfo.FullName = previewNode.Attributes["alt"].Value;
+            if (previewNode != null)
+            {
+                galleryInfo.PreviewUrl = previewNode.Attributes["src"].Value;
+                galleryInfo.FullName = previewNode.Attributes["alt"].Value;
+            }
+            else
+            {
+                previewNode = trNode.SelectSingleNode("td/div/div[@class=\"it2\"]");
+                var initString = previewNode.InnerText;
+
+                var initStringParts = initString.Split('~');
+                galleryInfo.PreviewUrl = $"http{(initStringParts[0] == "inits" ? "s" : String.Empty)}://" +
+                                         $"{initStringParts[1]}/{initStringParts[2]}";
+                galleryInfo.FullName = initStringParts[3];
+            }
 
 
             var url = trNode.SelectSingleNode("//div[@class=\"it5\"]/a").Attributes["href"].Value;
