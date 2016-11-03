@@ -12,6 +12,7 @@ using System.Collections;
 using System.Collections.Specialized;
 using System.Net;
 using HtmlAgilityPack;
+using System.Text.RegularExpressions;
 
 namespace InfoParser
 {
@@ -24,10 +25,23 @@ namespace InfoParser
         static EHentaiParser() { }
 
         public static EHentaiParser Instance => _instance;
-        
+
         #endregion Singleton
 
         #region Types
+
+        public class GalleryInfo
+        {
+            public int Id { get; set; }
+
+            public string Token { get; set; }
+
+            public string Url { get; set; }
+
+            public string FullName { get; set; }
+
+            public string PreviewUrl { get; set; }
+        }
 
         private enum RequestType
         {
@@ -137,7 +151,7 @@ namespace InfoParser
             return "?" + string.Join("&", array);
         }
 
-        private IEnumerable<Gallery> ParseGalleries(string result)
+        private IEnumerable<GalleryInfo> ParseGalleries(string result)
         {
             var doc = new HtmlDocument();
             doc.LoadHtml(result);
@@ -155,9 +169,26 @@ namespace InfoParser
             }
         }
 
-        private Gallery ParseGallery(HtmlNode trNode)
+        private GalleryInfo ParseGallery(HtmlNode trNode)
         {
-            throw new NotImplementedException();
+            var galleryInfo = new GalleryInfo();
+
+            var text = trNode.InnerHtml;
+
+            var previewNode = trNode.SelectSingleNode("/div[@class=\"it2\"]/img");
+            galleryInfo.PreviewUrl = previewNode.Attributes["src"].Value;
+            galleryInfo.FullName = previewNode.Attributes["alt"].Value;
+
+
+            var url = trNode.SelectSingleNode("//div[@class=\"it5\"]/a").Attributes["href"].Value;
+            galleryInfo.Url = url;
+
+            var parts = url.Split(new[] { "/" }, StringSplitOptions.RemoveEmptyEntries);
+
+            galleryInfo.Id = Int32.Parse(parts[parts.Length - 2]);
+            galleryInfo.Token = parts[parts.Length - 1];
+
+            return galleryInfo;
         }
         #endregion Private methods
 
@@ -170,7 +201,7 @@ namespace InfoParser
             return JsonConvert.DeserializeObject<GalleryResponseJson>(result).GalleryList.FirstOrDefault();
         }
 
-        public async Task<IEnumerable<Gallery>> SearchGalleries(GalleryCategory categoriesForSearch = GalleryCategory.All, 
+        public async Task<IEnumerable<GalleryInfo>> SearchGalleries(GalleryCategory categoriesForSearch = GalleryCategory.All, 
                                                                 string searchString = "")
         {
             var dic = new Dictionary<string, string>();
@@ -191,7 +222,7 @@ namespace InfoParser
 
             var result = await EHentaiRequest(String.Empty, RequestType.Get, dic);
             
-            IEnumerable<Gallery> gals = ParseGalleries(result);
+            IEnumerable<GalleryInfo> gals = ParseGalleries(result);
 
             return gals;
         }

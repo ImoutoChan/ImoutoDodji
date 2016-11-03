@@ -23,7 +23,7 @@ namespace ParserTest
 
             var searchResult = await parser.SearchGalleries(GalleryCategory.Doujinshi | GalleryCategory.Manga, "sad");
 
-
+            var i = searchResult.ToList();
         }
     }
 }
