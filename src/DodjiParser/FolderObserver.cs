@@ -1,9 +1,9 @@
-﻿using System;
+﻿using DodjiParser.Models;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.ComponentModel;
-using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace DodjiParser
 {
@@ -77,12 +77,7 @@ namespace DodjiParser
     /// </summary>
     public class FolderObserver
     {
-        public struct FileSystemEntry
-        {
-            public bool IsFolder { get; set; }
-
-            public string Path { get; set; }
-        }
+        #region Types
 
         private enum SupportedArchiveExtensions
         {
@@ -112,29 +107,54 @@ namespace DodjiParser
             }
         }
 
-        [Flags]
-        public enum ObservationType
+        public class CurrentStateEventArgs : EventArgs
         {
-            FilesNonRecursive = 1,
-            FoldersNonRecursive = 2,
-            FilesRecursive = 5
+            public List<FileSystemGallery> FileSystemGalleries { get; set; } 
         }
+
+        #endregion
+
+        #region Fields
 
         private readonly ObservationType _observationType;
         private readonly DirectoryInfo _observedFolder;
+        private readonly Timer _timer;
+        private readonly object _lockObject = new object(); 
+
+        #endregion
+
+        #region Constructor
 
         public FolderObserver(DirectoryInfo observedFolder, 
-                              ObservationType observationType = ObservationType.FoldersNonRecursive | ObservationType.FilesRecursive,
-                              IEnumerable<FileSystemEntry> ignoreEntries = null
-                              )
+                              ObservationType observationType = ObservationType.FoldersNonRecursive | ObservationType.FilesRecursive)
         {
             _observationType = observationType;
             _observedFolder = observedFolder;
-
-            Update();
+            _timer = new Timer(TimerElapsed, null, 0, 5000);
         }
 
-        private void Update()
+        private void TimerElapsed(object par)
+        {
+            if (Monitor.TryEnter(_lockObject))
+            {
+                try
+                {
+                    var state = UpdateCurrentState().ToList();
+                    OnCurrentStateUpdated(state);
+                }
+                finally
+                {
+                    Monitor.Exit(_lockObject);
+                }
+            }
+
+        }
+
+        #endregion Constructor
+
+        #region Private methods
+
+        private IEnumerable<FileSystemGallery> UpdateCurrentState()
         {
             IEnumerable<FileInfo> archives;
             IEnumerable<DirectoryInfo> archiveFolders;
@@ -145,38 +165,44 @@ namespace DodjiParser
             }
             else if (_observationType.HasFlag(ObservationType.FilesNonRecursive))
             {
-                archives = GetFiles(_observedFolder, GetSupportedArchiveExtensions(), SearchOption.AllDirectories);
+                archives = GetFiles(_observedFolder, GetSupportedArchiveExtensions(), SearchOption.TopDirectoryOnly);
             }
             else
             {
                 archives = new List<FileInfo>();
             }
 
-            if (_observationType.HasFlag(ObservationType.FoldersNonRecursive))
-            {
-                archiveFolders = GetArchiveDirectory(_observedFolder, GetSupportedArchiveEntryExtensions(), SearchOption.TopDirectoryOnly);
-            }
-            else if (_observationType.HasFlag(ObservationType.FilesNonRecursive))
+            if (_observationType.HasFlag(ObservationType.FoldersRecursive))
             {
                 archiveFolders = GetArchiveDirectory(_observedFolder, GetSupportedArchiveEntryExtensions(), SearchOption.AllDirectories);
+            }
+            else if (_observationType.HasFlag(ObservationType.FoldersNonRecursive))
+            {
+                archiveFolders = GetArchiveDirectory(_observedFolder, GetSupportedArchiveEntryExtensions(), SearchOption.TopDirectoryOnly);
             }
             else
             {
                 archiveFolders = new List<DirectoryInfo>();
             }
+
+            foreach (var archiveFolder in archiveFolders)
+            {
+                yield return new FolderFileSystemGallery(archiveFolder);
+            }
+            foreach (var fileInfo in archives)
+            {
+                yield return new ArchiveFileSystemGallery(fileInfo);
+            }
         }
 
-        private IEnumerable<DirectoryInfo> GetArchiveDirectory(DirectoryInfo sourceFolder, IEnumerable<string> supportedExtensions, SearchOption searchOption)
+        private IEnumerable<DirectoryInfo> GetArchiveDirectory(DirectoryInfo sourceFolder, IEnumerable<string> supportedImageExtensions, SearchOption searchOption)
         {
             var archiveDirectories = sourceFolder
-                .GetDirectories(String.Empty, searchOption)
+                .GetDirectories("*", searchOption)
                 .Where(x => !x.GetDirectories().Any())
-                .Where(d => d.GetFiles().Any(f => supportedExtensions.Contains(f.Extension.ToLower())));
+                .Where(d => d.GetFiles().Any(f => supportedImageExtensions.Select(x => "." + x).Contains(f.Extension.ToLower())));
 
-            foreach (var directoryInfo in archiveDirectories)
-            {
-                
-            }
+            return archiveDirectories;
         }
 
         private IEnumerable<FileInfo> GetFiles(DirectoryInfo directoryInfo, 
@@ -197,5 +223,18 @@ namespace DodjiParser
                         );
             }
         }
+
+        #endregion
+        
+        #region Events
+
+        public event EventHandler<CurrentStateEventArgs> CurrentStateUpdated;
+
+        protected virtual void OnCurrentStateUpdated(List<FileSystemGallery> param)
+        {
+            CurrentStateUpdated?.Invoke(this, new CurrentStateEventArgs {FileSystemGalleries = param});
+        }
+
+        #endregion
     }
 }

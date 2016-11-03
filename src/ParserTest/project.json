@@ -5,6 +5,7 @@
   },
 
   "dependencies": {
+    "DodjiParser": "1.0.0-*",
     "InfoParser": "1.0.0-*",
     "Microsoft.NETCore.App": {
       "type": "platform",
