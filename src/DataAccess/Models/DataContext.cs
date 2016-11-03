@@ -1,15 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
 namespace DataAccess.Models
 {
     public class DataContext : DbContext
     {
-        public DataContext(DbContextOptions<DataContext> options) : base(options)
-        {
-            
-        }
-
         public DbSet<Tag> Tags { get; set; }
         public DbSet<Namespace> Namespaces { get; set; }
 
@@ -19,20 +14,19 @@ namespace DataAccess.Models
         }
     }
 
-    public class Namespace
+    public class EntityBase
     {
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
-        public string Name { get; set; }
-
-        public List<Tag> Tags { get; set; }
     }
 
-    public class Tag
+    public class Namespace : EntityBase
     {
-        public int Id { get; set; }
         public string Name { get; set; }
+    }
 
-        public int NamespaceId { get; set; }
-        public Namespace Namespace { get; set; }
+    public class Tag : EntityBase
+    {
+        public string Name { get; set; }
     }
 }
