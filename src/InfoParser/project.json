@@ -6,7 +6,6 @@
     "NETStandard.Library": "1.6.0",
     "Newtonsoft.Json": "9.0.2-beta1",
     "NLog": "5.0.0-beta01",
-    "NLog.Config": "4.3.10",
     "System.Collections.Specialized": "4.0.1"
   },
 
