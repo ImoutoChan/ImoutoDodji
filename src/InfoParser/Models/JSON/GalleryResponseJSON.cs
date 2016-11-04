@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
 using NLog;
+using SharedModel;
+using System.Diagnostics;
 
 namespace InfoParser.Models.JSON
 {
+    [DebuggerDisplay("{Namespace}\t{Name}")]
     public class Tag
     {
         public string Namespace { get; set; }
@@ -49,7 +52,7 @@ namespace InfoParser.Models.JSON
         public int FileCount { get; set; }
 
         [JsonProperty("filesize")]
-        public long Filesize { get; set; }
+        public long FileSize { get; set; }
 
         [JsonProperty("expunged")]
         public bool IsExpunged { get; set; }
@@ -58,7 +61,7 @@ namespace InfoParser.Models.JSON
         public double Rating { get; set; }
 
         [JsonProperty("torrentcount")]
-        public string Torrentcount { get; set; }
+        public int Torrentcount { get; set; }
 
         [JsonProperty("tags")]
         public IList<string> TagStrings { get; set; }

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace InfoParser.Models.JSON
+namespace SharedModel
 {
     [Flags]
     public enum GalleryCategory

@@ -53,7 +53,7 @@ namespace DodjiParser
     /// -- -- dodji_file3.gif
     /// -- -- dodji_file4.jpeg
     /// 
-    /// *FoldersRecursive* - not supported yet
+    /// *FoldersRecursive*
     /// Dodji folders shouldn't contain any other folders and should contain at least one image file.
     /// 
     /// [OBSERVED FOLDER]
@@ -82,7 +82,9 @@ namespace DodjiParser
         private enum SupportedArchiveExtensions
         {
             Zip,
-            Rar
+            Rar,
+            Cbz,
+            Cbr
         }
 
         private IEnumerable<string> GetSupportedArchiveExtensions()

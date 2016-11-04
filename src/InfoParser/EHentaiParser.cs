@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using NLog;
 using System.Net;
 using HtmlAgilityPack;
+using SharedModel;
 
 namespace InfoParser
 {
@@ -137,7 +138,7 @@ namespace InfoParser
 
         private string ToQueryString(Dictionary<string, string> parameters)
         {
-            if (parameters.Count == 0)
+            if (parameters == null || parameters.Count == 0)
             {
                 return String.Empty;
             }

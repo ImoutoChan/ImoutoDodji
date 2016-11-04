@@ -20,11 +20,9 @@ namespace ParserTest
 
         private async static Task RunTests()
         {
-            //await ParserTest();
+            await ParserTest();
 
             //FolderObserverTest();
-
-
         }
 
         private async static Task FolderObserverTest()
@@ -47,10 +45,12 @@ namespace ParserTest
             var parser = EHentaiParser.Instance;
             //var gal = await parser.GetGallery(992385, "669d450607");
             //var tags = gal.Tags.ToList();
+            var gal = await parser.GetGallery(735011, "b020881a70");
+            var tags = gal.Tags.ToList();
 
-            var searchResult = await parser.SearchGalleries(GalleryCategory.Doujinshi | GalleryCategory.Manga, "sad");
+            //var searchResult = await parser.SearchGalleries(GalleryCategory.Doujinshi | GalleryCategory.Manga, "sad");
 
-            var i = searchResult.ToList();
+            //var i = searchResult.ToList();
         }
     }
 }

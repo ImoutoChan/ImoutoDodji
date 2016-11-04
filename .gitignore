@@ -10,3 +10,5 @@ src/ParserTest/obj/
 *.lock.json
 src/InfoParser/obj/
 src/InfoParser/bin/
+src/SharedModel/bin/
+src/SharedModel/obj/
