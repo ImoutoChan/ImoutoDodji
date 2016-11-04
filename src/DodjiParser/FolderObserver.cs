@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using SharedModel;
 
 namespace DodjiParser
 {
@@ -79,39 +80,9 @@ namespace DodjiParser
     {
         #region Types
 
-        private enum SupportedArchiveExtensions
-        {
-            Zip,
-            Rar,
-            Cbz,
-            Cbr
-        }
-
-        private IEnumerable<string> GetSupportedArchiveExtensions()
-        {
-            foreach (var name in Enum.GetNames(typeof(SupportedArchiveExtensions)))
-            {
-                yield return name;
-            }
-        }
-
-        private enum SupportedArchiveEntryExtensions
-        {
-            jpg,
-            png
-        }
-
-        private IEnumerable<string> GetSupportedArchiveEntryExtensions()
-        {
-            foreach (var name in Enum.GetNames(typeof(SupportedArchiveEntryExtensions)))
-            {
-                yield return name;
-            }
-        }
-
         public class CurrentStateEventArgs : EventArgs
         {
-            public List<FileSystemGallery> FileSystemGalleries { get; set; } 
+            public List<IFileSystemGallery> FileSystemGalleries { get; set; } 
         }
 
         #endregion
@@ -156,18 +127,18 @@ namespace DodjiParser
 
         #region Private methods
 
-        private IEnumerable<FileSystemGallery> UpdateCurrentState()
+        private IEnumerable<IFileSystemGallery> UpdateCurrentState()
         {
             IEnumerable<FileInfo> archives;
             IEnumerable<DirectoryInfo> archiveFolders;
 
             if (_observationType.HasFlag(ObservationType.FilesRecursive))
             {
-                archives = GetFiles(_observedFolder, GetSupportedArchiveExtensions(), SearchOption.AllDirectories);
+                archives = SupportedExtensions.GetFilesWithExtensions(_observedFolder, SupportedExtensions.GetArchives(), SearchOption.AllDirectories);
             }
             else if (_observationType.HasFlag(ObservationType.FilesNonRecursive))
             {
-                archives = GetFiles(_observedFolder, GetSupportedArchiveExtensions(), SearchOption.TopDirectoryOnly);
+                archives = SupportedExtensions.GetFilesWithExtensions(_observedFolder, SupportedExtensions.GetArchives(), SearchOption.TopDirectoryOnly);
             }
             else
             {
@@ -176,11 +147,11 @@ namespace DodjiParser
 
             if (_observationType.HasFlag(ObservationType.FoldersRecursive))
             {
-                archiveFolders = GetArchiveDirectory(_observedFolder, GetSupportedArchiveEntryExtensions(), SearchOption.AllDirectories);
+                archiveFolders = GetArchiveDirectory(_observedFolder, SupportedExtensions.GetImages(), SearchOption.AllDirectories);
             }
             else if (_observationType.HasFlag(ObservationType.FoldersNonRecursive))
             {
-                archiveFolders = GetArchiveDirectory(_observedFolder, GetSupportedArchiveEntryExtensions(), SearchOption.TopDirectoryOnly);
+                archiveFolders = GetArchiveDirectory(_observedFolder, SupportedExtensions.GetImages(), SearchOption.TopDirectoryOnly);
             }
             else
             {
@@ -206,33 +177,14 @@ namespace DodjiParser
 
             return archiveDirectories;
         }
-
-        private IEnumerable<FileInfo> GetFiles(DirectoryInfo directoryInfo, 
-            IEnumerable<string> supportedExtensions, 
-            SearchOption searchOption = SearchOption.TopDirectoryOnly)
-        {
-            if (!supportedExtensions.Any())
-            {
-                return directoryInfo.GetFiles("*.*", searchOption);
-            }
-            else
-            {
-                return
-                   supportedExtensions
-                        .Select(x => "*." + x) // turn into globs
-                        .SelectMany(x =>
-                            directoryInfo.EnumerateFiles(x, searchOption)
-                        );
-            }
-        }
-
+        
         #endregion
         
         #region Events
 
         public event EventHandler<CurrentStateEventArgs> CurrentStateUpdated;
 
-        protected virtual void OnCurrentStateUpdated(List<FileSystemGallery> param)
+        protected virtual void OnCurrentStateUpdated(List<IFileSystemGallery> param)
         {
             CurrentStateUpdated?.Invoke(this, new CurrentStateEventArgs {FileSystemGalleries = param});
         }

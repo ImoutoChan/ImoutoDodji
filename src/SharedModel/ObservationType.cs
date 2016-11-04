@@ -1,5 +1,6 @@
 ﻿using System;
-namespace DodjiParser.Models
+
+namespace SharedModel
 {
     [Flags]
     public enum ObservationType

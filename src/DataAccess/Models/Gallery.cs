@@ -12,7 +12,7 @@ namespace DataAccess.Models
         public string Name { get; set; }
 
         [Required]
-        public long FileSize { get; set; }
+        public long Size { get; set; }
 
         [Required]
         public int FilesCount { get; set; }
