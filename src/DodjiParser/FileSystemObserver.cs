@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using DataAccess;
 using DataAccess.Models;
@@ -10,9 +9,24 @@ using DodjiParser.Models;
 
 namespace DodjiParser
 {
-    // TODO replace
     public class FileSystemObserver
     {
+        #region Static members
+
+        public static async Task<FileSystemObserver> GetInstance(DataRepository repository)
+        {
+            var fso = new FileSystemObserver(repository);
+
+            await fso.Initialize();
+
+            return fso;
+        }
+        
+
+        #endregion
+
+        #region Types
+
         private struct Observer
         {
             public SourceFolder SourceFolder { get; set; }
@@ -20,20 +34,31 @@ namespace DodjiParser
             public FolderObserver FolderObserver { get; set; }
         }
 
-        private const string PreviewStoragePath = "Thumbs";
+        #endregion
+
+        #region Fields
+
+        private const string _previewStoragePath = "Thumbs";
 
         private readonly DataRepository _repository;
         private readonly List<Observer> _fsObservers = new List<Observer>();
         private List<Gallery> _savedGalleries;
         private List<IFileSystemGallery> _processingGalleries = new List<IFileSystemGallery>();
 
-        public FileSystemObserver(DataRepository repository)
+        #endregion
+
+        #region Constructors
+
+        private FileSystemObserver(DataRepository repository)
         {
             _repository = repository;
             _repository.CollectionChanged += _repository_CollectionChanged;
             _repository.GalleriesChanged += _repository_GalleriesChanged;
-            Init();
         }
+
+        #endregion
+
+        #region Private methods
 
         private async void _repository_GalleriesChanged(object sender, EventArgs e)
         {
@@ -45,7 +70,7 @@ namespace DodjiParser
             await ReloadFolders();
         }
 
-        private async Task Init()
+        private async Task Initialize()
         {
             await ReloadGalleries();
             await ReloadFolders();
@@ -53,7 +78,7 @@ namespace DodjiParser
 
         private async Task ReloadGalleries()
         {
-            _savedGalleries = await _repository.GetGalleries();
+            _savedGalleries = (await _repository.GetGalleries()).ToList();
         }
 
         private async Task ReloadFolders()
@@ -65,7 +90,7 @@ namespace DodjiParser
             }
             _fsObservers.Clear();
 
-            var collections = await _repository.GetCollectionsWithFolders();
+            var collections = (await _repository.GetCollections()).ToList();
 
             foreach (var collection in collections)
             {
@@ -158,11 +183,13 @@ namespace DodjiParser
                 FilesCount = await fileSystemGallery.GetFileCount(),
                 Md5 = await fileSystemGallery.GetMd5(),
                 Name = fileSystemGallery.Name,
-                PreviewPath = await fileSystemGallery.GeneratePreview(PreviewStoragePath),
+                PreviewPath = await fileSystemGallery.GeneratePreview(_previewStoragePath),
                 StorageType = fileSystemGallery.StorageType
             };
 
             await _repository.AddGallery(dbGallery);
         }
+
+        #endregion
     }
 }

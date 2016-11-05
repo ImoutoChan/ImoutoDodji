@@ -9,6 +9,6 @@ namespace DataAccess.Models
         public string Name { get; set; }
 
 
-        public List<BindedTag> BindedTags { get; set; }
+        public List<BindedTag> BindedTags { get; set; } = new List<BindedTag>();
     }
 }

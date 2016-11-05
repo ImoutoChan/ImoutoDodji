@@ -10,7 +10,7 @@ namespace DataAccess.Models
 
 
 
-        public List<SourceFolder> SourceFolders { get; set; } 
+        public List<SourceFolder> SourceFolders { get; set; } = new List<SourceFolder>();
 
         public DestinationFolder DestinationFolder { get; set; }
     }

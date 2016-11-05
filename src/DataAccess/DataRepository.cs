@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,19 +7,39 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DataAccess
 {
-
-    /// <summary>
-    /// TODO Cache
-    /// </summary>
     public class DataRepository
     {
-        public DataRepository()
+        #region Static members
+
+        public static async Task<DataRepository> GetInstance(bool wipe = false)
         {
-            using (var db = new DataContext())
+            var rep = new DataRepository();
+            if (wipe)
             {
-                db.Database.Migrate();
+                await rep.WipeDatabaseAsync();
             }
+            else
+            {
+                await rep.MigrateAsync();
+            }
+            return rep;
         }
+
+        #endregion
+
+        #region Fields
+
+        private DataCache _cache = new DataCache();
+
+        #endregion
+
+        #region Constructor
+
+        private DataRepository()
+        {
+        }
+
+        #endregion
 
         //public async Task<Tag> GetTag(string nameSpaceName, string tagName)
         //{
@@ -59,17 +78,9 @@ namespace DataAccess
 
         #region Collection Management
 
-        public async Task<List<Collection>> GetCollections()
-        {
-            using (var db = new DataContext())
-            {
-                var collections = await db.Collections.ToListAsync();
-                return collections;
-            }
-        }
-
         public async Task AddCollection(string name)
         {
+            var collection = new Collection {Name = name};
             using (var db = new DataContext())
             {
                 var flag = await db.Collections.AnyAsync(x => x.Name == name);
@@ -78,11 +89,13 @@ namespace DataAccess
                     throw new ArgumentException($"Collection with same name ({name}) already exists.");
                 }
 
-                await db.Collections.AddAsync(new Collection {Name = name});
+                await db.Collections.AddAsync(collection);
                 await db.SaveChangesAsync();
+                var i = collection.SourceFolders;
+                var j = collection.DestinationFolder;
             }
 
-            OnCollectionChanged();
+            await CacheAdd(_cache.Collections, collection);
         }
 
         public async Task RemoveCollection(int collectionId)
@@ -99,11 +112,12 @@ namespace DataAccess
                 await db.SaveChangesAsync();
             }
 
-            OnCollectionChanged();
+            await CacheRemove(_cache.Collections, collectionId);
         }
 
         public async Task RenameCollection(int collectionId, string newName)
         {
+            Collection colToUpdate;
             using (var db = new DataContext())
             {
                 var collection = await db.Collections.FindAsync(collectionId);
@@ -123,23 +137,19 @@ namespace DataAccess
 
                 collection.Name = newName;
                 await db.SaveChangesAsync();
+                colToUpdate = collection;
             }
 
-            OnCollectionChanged();
+            await CacheUpdate(_cache.Collections, colToUpdate);
         }
 
-        public async Task<List<Collection>> GetCollectionsWithFolders()
+        public async Task<IEnumerable<Collection>> GetCollections()
         {
-            using (var db = new DataContext())
-            {
-                var collections = await db.Collections
-                    .Include(x => x.SourceFolders)
-                    .Include(x => x.DestinationFolder)
-                    .ToListAsync();
-                return collections;
-            }
-        }
+            await FillCache<Collection>();
 
+            return _cache.Collections;
+        }
+        
         #endregion
 
         #region Source Folder Management
@@ -286,22 +296,153 @@ namespace DataAccess
 
                 await db.Galleries.AddAsync(gallery);
                 await db.SaveChangesAsync();
+
+                // adding to parsing table
+                var parserState = new ParsingState
+                {
+                    State = GalleryState.Init,
+                    DateTimeCreated = DateTime.Now,
+                    DateTimeUpdated = DateTime.Now,
+                    GalleryId = gallery.Id
+                };
+
+                await db.ParsingStates.AddAsync(parserState);
+                await db.SaveChangesAsync();
             }
 
-            OnGalleriesChanged();
+            await CacheAdd(_cache.Galleries, gallery);
         }
 
-        public async Task<List<Gallery>> GetGalleries()
+        public async Task<IEnumerable<Gallery>> GetGalleries()
         {
-            using (var db = new DataContext())
+            await FillCache<Gallery>();
+
+            return _cache.Galleries;
+        }
+        
+        #endregion
+
+        #region Lists management
+        
+        private async Task CacheAdd<T>(IList<T> cacheEntries, T entry)
+        {
+            await FillCache<T>();
+
+            lock (cacheEntries)
             {
-                return await db.Galleries.ToListAsync();
+                cacheEntries.Add(entry);
+            }
+
+            OnEntryChanged<T>();
+        }
+
+        private async Task CacheRemove<T>(IList<T> cacheEntries, int id) where T : EntityBase
+        {
+            await FillCache<T>();
+
+            lock (cacheEntries)
+            {
+                cacheEntries.Remove(cacheEntries.First(x => x.Id == id));
+            }
+
+            OnEntryChanged<T>();
+        }
+
+        private async Task CacheUpdate<T>(IList<T> cacheEntries, T entry) where T : EntityBase
+        {
+            await FillCache<T>();
+
+            lock (cacheEntries)
+            {
+                cacheEntries.Remove(cacheEntries.First(x => x.Id == entry.Id));
+                cacheEntries.Add(entry);
+            }
+
+            OnEntryChanged<T>();
+        }
+
+        private async Task FillCache<T>()
+        {
+            if (typeof(T) == typeof(Collection))
+            {
+                await FillCollectionCache();
+            }
+            else // if (typeof(T) == typeof(Gallery)
+            {
+                await FillGalleryCache();
+            }
+        }
+
+        private void OnEntryChanged<T>()
+        {
+            if (typeof(T) == typeof(Collection))
+            {
+                OnCollectionChanged();
+            }
+            else // if (typeof(T) == typeof(Gallery)
+            {
+                OnGalleriesChanged();
+            }
+        }
+
+        private async Task FillCollectionCache()
+        {
+            if (!_cache.IsCollectionsInitialized)
+            {
+                List<Collection> collections;
+                using (var db = new DataContext())
+                {
+                    collections = await db.Collections
+                        .Include(x => x.SourceFolders)
+                        .Include(x => x.DestinationFolder)
+                        .ToListAsync();
+                }
+
+                lock (_cache.Collections)
+                {
+                    if (!_cache.IsCollectionsInitialized)
+                    {
+                        _cache.Collections.Clear();
+                        foreach (var collection in collections)
+                        {
+                            _cache.Collections.Add(collection);
+                        }
+                    }
+                    _cache.IsCollectionsInitialized = true;
+                }
+            }
+        }
+
+        private async Task FillGalleryCache()
+        {
+            if (!_cache.IsGalleriesInitialized)
+            {
+                List<Gallery> gals;
+                using (var db = new DataContext())
+                {
+                    gals = await db.Galleries.ToListAsync();
+                }
+
+                lock (_cache.Galleries)
+                {
+                    if (!_cache.IsGalleriesInitialized)
+                    {
+                        _cache.Galleries.Clear();
+                        foreach (var gallery in gals)
+                        {
+                            _cache.Galleries.Add(gallery);
+                        }
+                    }
+                    _cache.IsGalleriesInitialized = true;
+                }
             }
         }
 
         #endregion
 
-        public static async Task WipeDatabaseAsync()
+        #region Database engine
+
+        private async Task WipeDatabaseAsync()
         {
             using (var db = new DataContext())
             {
@@ -310,7 +451,7 @@ namespace DataAccess
             }
         }
 
-        public static void WipeDatabase()
+        private void WipeDatabase()
         {
             using (var db = new DataContext())
             {
@@ -318,6 +459,18 @@ namespace DataAccess
                 db.Database.Migrate();
             }
         }
+        
+        private async Task MigrateAsync()
+        {
+            using (var db = new DataContext())
+            {
+                await db.Database.MigrateAsync();
+            }
+        }
+
+        #endregion
+
+        #region Events
 
         public event EventHandler CollectionChanged;
 
@@ -332,5 +485,7 @@ namespace DataAccess
         {
             GalleriesChanged?.Invoke(this, EventArgs.Empty);
         }
+
+        #endregion
     }
 }

@@ -45,7 +45,7 @@ namespace DodjiParser.Models
                 hashes.Add(md5String);
             }
 
-            var inputBytes = Encoding.UTF8.GetBytes(String.Join(";", hashes));
+            var inputBytes = Encoding.UTF8.GetBytes(String.Join(";", hashes.OrderBy(x => x)));
 
             using (MD5 md5 = MD5.Create())
             {

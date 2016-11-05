@@ -115,8 +115,10 @@ namespace DodjiParser
                     var state = UpdateCurrentState().ToList();
                     OnCurrentStateUpdated(state);
                 }
-                catch(Exception)
-                { }
+                catch (Exception)
+                {
+                    // ignored
+                }
                 finally
                 {
                     Monitor.Exit(_lockObject);
@@ -145,7 +147,7 @@ namespace DodjiParser
             }
             else if (_observationType.HasFlag(ObservationType.FilesNonRecursive))
             {
-                archives = SupportedExtensions.GetFilesWithExtensions(_observedFolder, SupportedExtensions.GetArchives(), SearchOption.TopDirectoryOnly);
+                archives = SupportedExtensions.GetFilesWithExtensions(_observedFolder, SupportedExtensions.GetArchives());
             }
             else
             {
@@ -158,7 +160,7 @@ namespace DodjiParser
             }
             else if (_observationType.HasFlag(ObservationType.FoldersNonRecursive))
             {
-                archiveFolders = GetArchiveDirectory(_observedFolder, SupportedExtensions.GetImages(), SearchOption.TopDirectoryOnly);
+                archiveFolders = GetArchiveDirectory(_observedFolder, SupportedExtensions.GetImages());
             }
             else
             {
@@ -175,7 +177,7 @@ namespace DodjiParser
             }
         }
 
-        private IEnumerable<DirectoryInfo> GetArchiveDirectory(DirectoryInfo sourceFolder, IEnumerable<string> supportedImageExtensions, SearchOption searchOption)
+        private IEnumerable<DirectoryInfo> GetArchiveDirectory(DirectoryInfo sourceFolder, IEnumerable<string> supportedImageExtensions, SearchOption searchOption = SearchOption.TopDirectoryOnly)
         {
             var archiveDirectories = sourceFolder
                 .GetDirectories("*", searchOption)

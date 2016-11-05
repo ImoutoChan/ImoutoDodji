@@ -28,11 +28,11 @@ namespace DataAccess.Models
 
 
 
-        public List<Metadata> Metadata { get; set; }
+        public List<Metadata> Metadata { get; set; } = new List<Metadata>();
 
-        public List<ParsingState> ParsingStates { get; set; }
+        public List<ParsingState> ParsingStates { get; set; } = new List<ParsingState>();
 
-        public List<BindedTag> BindedTags { get; set; }
+        public List<BindedTag> BindedTags { get; set; } = new List<BindedTag>();
 
         [Required]
         public int CollectionId { get; set; }

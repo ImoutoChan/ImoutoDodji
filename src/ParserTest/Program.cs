@@ -15,48 +15,100 @@ namespace ParserTest
     {
         public static void Main(string[] args)
         {
-            RunTests();
 
-            Console.ReadKey();
+            try
+            {
+                RunTests();
+
+                Console.ReadKey();
+            }
+            catch (Exception ex)
+            {
+                
+                throw;
+            }
         }
 
-        private async static Task RunTests()
+        private static async Task RunTests()
         {
             //await ParserTest();
 
             //FolderObserverTest();
 
-            await TestObserver();
+            //await TestObserver();
+
+            await TestDataAccess();
+        }
+
+
+        private static async Task TestDataAccess()
+        {
+            var init = await DodjiService.GetInstance(true);
+
+            await init.Repository.AddCollection("my collection");
+            var collection = (await init.Repository.GetCollections()).First();
+            var cols2 = await init.Repository.GetCollections();
+            var gals = await init.Repository.GetGalleries();
+
+            await init.Repository.RemoveCollection(collection.Id);
+            cols2 = await init.Repository.GetCollections();
+            await init.Repository.AddCollection("my collection");
+            cols2 = await init.Repository.GetCollections();
+            await init.Repository.RenameCollection(cols2.First().Id, "my new collection");
+            cols2 = await init.Repository.GetCollections();
+
+
+
+            //await init.Repository.AddDestinationFolder(
+            //    new DestinationFolder
+            //    {
+            //        CollectionId = collection.Id,
+            //        Path = "Y:\\!playgoround\\!dest_mixed3"
+            //    });
+            //await init.Repository.AddSourceFolder(
+            //    new SourceFolder
+            //    {
+            //        CollectionId = collection.Id,
+            //        Path = "Y:\\!playgoround\\!source_files",
+            //        KeepRelativePath = false
+            //    });
+            //await init.Repository.AddSourceFolder(
+            //    new SourceFolder
+            //    {
+            //        CollectionId = collection.Id,
+            //        Path = "Y:\\!playgoround\\!source_folders",
+            //        KeepRelativePath = false
+            //    });
         }
 
         private static async Task TestObserver()
         {
-            var init = new Initializer(true);
+            var init = await DodjiService.GetInstance(true);
             await init.Repository.AddCollection("my collection");
             var collection = (await init.Repository.GetCollections()).First();
             await init.Repository.AddDestinationFolder(
                 new DestinationFolder
                 {
                     CollectionId = collection.Id,
-                    Path = "Y:\\!playgoround\\!dest_mixed2"
+                    Path = "Y:\\!playgoround\\!dest_mixed3"
                 });
             await init.Repository.AddSourceFolder(
                 new SourceFolder
                 {
                     CollectionId = collection.Id,
                     Path = "Y:\\!playgoround\\!source_files",
-                    KeepRelativePath = true
+                    KeepRelativePath = false
                 });
             await init.Repository.AddSourceFolder(
                 new SourceFolder
                 {
                     CollectionId = collection.Id,
                     Path = "Y:\\!playgoround\\!source_folders",
-                    KeepRelativePath = true
+                    KeepRelativePath = false
                 });
         }
 
-        private async static Task FolderObserverTest()
+        private static async Task FolderObserverTest()
         {
             var obs = new FolderObserver(new DirectoryInfo(@"Y:\!!DodjiSource\!source"), ObservationType.All);
             obs.CurrentStateUpdated += (obj, args) =>
