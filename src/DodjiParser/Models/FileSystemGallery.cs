@@ -1,14 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using DataAccess.Models;
+using ImageSharp;
 using SharpCompress.Archives;
 using SharpCompress.Readers;
 
@@ -31,84 +29,65 @@ namespace DodjiParser.Models
         Task<string> GeneratePreview(string previewStoragePath);
 
         Task<long> GetSize();
+
+        Task Move(string sourceFolderPath, string destinationFolderPath, bool keepRelativePath);
     }
 
     public abstract class FileSystemGallery
     {
-        protected string GetImageMd5(Bitmap image)
-        {
-            byte[] imgBytes;
-            using (MemoryStream ms = new MemoryStream())
-            {
-                image.Save(ms, ImageFormat.Png);
-                imgBytes = ms.ToArray();
-            }
-
-            var hash = MD5.Create().ComputeHash(imgBytes);
-            var imageMD5 = BitConverter.ToString(hash).Replace("-", "").ToLower();
-            return imageMD5;
-        }
-
-        protected static Bitmap ResizeImage(Image image, int height)
-        {
-            var width = Convert.ToInt32(image.HorizontalResolution / image.VerticalResolution) * height;
-
-            var destRect = new Rectangle(0, 0, width, height);
-            var destImage = new Bitmap(width, height);
-
-            destImage.SetResolution(image.HorizontalResolution, image.VerticalResolution);
-
-            using (var graphics = Graphics.FromImage(destImage))
-            {
-                graphics.CompositingMode = CompositingMode.SourceCopy;
-                graphics.CompositingQuality = CompositingQuality.HighQuality;
-                graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                graphics.SmoothingMode = SmoothingMode.HighQuality;
-                graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-
-                using (var wrapMode = new ImageAttributes())
-                {
-                    wrapMode.SetWrapMode(WrapMode.TileFlipXY);
-                    graphics.DrawImage(image, destRect, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, wrapMode);
-                }
-            }
-
-            return destImage;
-        }
-
         protected string CreateMd5ForFolder(List<FileInfo> files)
         {
             List<string> hashes = new List<string>();
 
+            foreach (var file in files)
+            {
+                var md5String = GetMd5ForFile(file);
+                hashes.Add(md5String);
+            }
+
+            var inputBytes = Encoding.UTF8.GetBytes(String.Join(";", hashes));
+
             using (MD5 md5 = MD5.Create())
             {
-                foreach (var file in files)
-                {
-                    var stream = new FileStream(file.FullName, FileMode.Open);
-                    hashes.Add(BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLower());
-                }
-                var inputBytes = Encoding.UTF8.GetBytes(String.Join(";", hashes));
-
                 return BitConverter.ToString(md5.ComputeHash(inputBytes)).Replace("-", "").ToLower();
             }
         }
 
-        protected async Task<string> GeneratePreview(FileInfo fileInfo, string previewStoragePath)
+        private string GetMd5ForFile(FileInfo file)
+        {
+            using (MD5 md5 = MD5.Create())
+            using (var stream = new FileStream(file.FullName, FileMode.Open))
+            {
+
+                var md5String = BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLower();
+                return md5String;
+            }
+        }
+
+        protected async Task<string> GeneratePreview(FileInfo fileInfo, string previewStoragePath, string md5)
         {
             return await Task.Run(() =>
             {
-                var preview = ResizeImage(Bitmap.FromFile(fileInfo.FullName), 450);
-
-                var imageMD5 = GetImageMd5(preview);
-
                 var currentFolder = new DirectoryInfo(Directory.GetCurrentDirectory());
                 var previewDir = currentFolder.GetDirectories().FirstOrDefault(x => x.Name == previewStoragePath);
                 var previewDirInfo = previewDir ?? currentFolder.CreateSubdirectory(previewStoragePath);
 
-                var filename = previewDirInfo.FullName + "@\\" + imageMD5 + ".jpg";
-                preview.Save(filename, ImageFormat.Jpeg);
+                var previewFilename = Path.Combine(previewDirInfo.FullName, md5 + ".jpg");
 
-                return filename;
+                var previewFileInfo = new FileInfo(previewFilename);
+                if (previewFileInfo.Exists)
+                {
+                    return previewFileInfo.FullName;
+                }
+
+                using (FileStream stream = File.OpenRead(fileInfo.FullName))
+                using (FileStream output = File.OpenWrite(previewFilename))
+                {
+                    Image image = new Image(stream);
+                    image.Resize(Convert.ToInt32((image.Width / (double)image.Height) * 450), 450)
+                         .Save(output);
+                }
+                return previewFilename;
             });
         }
     }
@@ -116,18 +95,24 @@ namespace DodjiParser.Models
 
     public class FolderFileSystemGallery : FileSystemGallery, IFileSystemGallery
     {
-        private readonly DirectoryInfo _directoryInfo;
-        private readonly List<FileInfo> _images;
+        private DirectoryInfo _directoryInfo;
+        private List<FileInfo> _images;
+        private string _md5 = null;
 
         public FolderFileSystemGallery(DirectoryInfo directoryInfo)
         {
             _directoryInfo = directoryInfo;
+            ReloadImages();
+        }
+
+        private void ReloadImages()
+        {
             _images =
                 SupportedExtensions.GetFilesWithExtensions(_directoryInfo, SupportedExtensions.GetImages()).ToList();
             if (!_images.Any())
             {
                 throw new ArgumentException(
-                    $"Directory ({directoryInfo.Name}) should contain at least one supported image file.");
+                    $"Directory ({_directoryInfo.Name}) should contain at least one supported image file.");
             }
         }
 
@@ -146,7 +131,17 @@ namespace DodjiParser.Models
 
         public async Task<string> GetMd5()
         {
-            return await Task.Run(() => CreateMd5ForFolder(_images));
+            if (_md5 != null)
+            {
+                return _md5;
+            }
+
+            await Task.Run(() =>
+            {
+                _md5 = CreateMd5ForFolder(_images);
+            });
+
+            return _md5;
         }
 
         public async Task<long> GetSize()
@@ -156,7 +151,40 @@ namespace DodjiParser.Models
 
         public async Task<string> GeneratePreview(string previewStoragePath)
         {
-            return await GeneratePreview(_images.First(), previewStoragePath);
+            return await base.GeneratePreview(_images.First(), previewStoragePath, await GetMd5());
+        }
+
+        public async Task Move(string sourceFolderPath, string destinationFolderPath, bool keepRelativePath)
+        {
+            await Task.Run(() =>
+            {
+                var subPath = _directoryInfo.Parent.FullName.Substring(sourceFolderPath.Length);
+                if (!String.IsNullOrWhiteSpace(subPath) && keepRelativePath)
+                {
+                    destinationFolderPath = System.IO.Path.Combine(destinationFolderPath, subPath.Substring(1),
+                        _directoryInfo.Name);
+                }
+                else
+                {
+                    destinationFolderPath = System.IO.Path.Combine(destinationFolderPath, _directoryInfo.Name);
+                }
+
+                var dirInfo = new DirectoryInfo(destinationFolderPath);
+
+                if (!dirInfo.Parent.Exists)
+                {
+                    dirInfo.Parent.Create();
+                }
+
+                _directoryInfo.MoveTo(dirInfo.FullName);
+
+                if (!dirInfo.Exists)
+                {
+                    throw new Exception("Directory was not be moved.");
+                }
+                _directoryInfo = dirInfo;
+                ReloadImages();
+            });
         }
 
         public void Dispose()
@@ -168,6 +196,7 @@ namespace DodjiParser.Models
         private const string TempArchivePath = "Temp";
         private List<FileInfo> _images;
         private readonly object _imagesLock = new object();
+        private string _md5 = null;
 
         private readonly FileInfo _archiveFileInfo;
 
@@ -195,21 +224,31 @@ namespace DodjiParser.Models
         {
             await LoadImages();
 
-            return await Task.Run(() => CreateMd5ForFolder(_images));
+            if (_md5 != null)
+            {
+                return _md5;
+            }
+
+            await Task.Run(() =>
+            {
+                _md5 = CreateMd5ForFolder(_images);
+            });
+
+            return _md5;
         }
 
         public async Task<string> GeneratePreview(string previewStoragePath)
         {
             await LoadImages();
 
-            return await GeneratePreview(_images.First(), previewStoragePath);
+            return await GeneratePreview(_images.First(), previewStoragePath, await GetMd5());
         }
 
         public async Task<long> GetSize()
         {
             await LoadImages();
-            return await Task.Run(() => _images.Select(i => i.Length).Aggregate((a, i) => a + i));
 
+            return await Task.Run(() => _images.Select(i => i.Length).Aggregate((a, i) => a + i));
         }
 
         private async Task LoadImages()
@@ -255,10 +294,36 @@ namespace DodjiParser.Models
             }
 
             _images =
-                SupportedExtensions.GetFilesWithExtensions(archiveTempDirInfo, SupportedExtensions.GetImages())
+                SupportedExtensions.GetFilesWithExtensions(archiveTempDirInfo, SupportedExtensions.GetImages(), SearchOption.AllDirectories)
                     .ToList();
+
+            if (!_images.Any())
+            {
+                throw new Exception($"Archive {_archiveFileInfo.FullName} doesn't contain any supported images.");
+            }
         }
-        
+
+        public async Task Move(string sourceFolderPath, string destinationFolderPath, bool keepRelativePath)
+        {
+            await Task.Run(() =>
+            {
+                var subPath = _archiveFileInfo.Directory.FullName.Substring(sourceFolderPath.Length);
+                if (!String.IsNullOrWhiteSpace(subPath) && keepRelativePath)
+                {
+                    destinationFolderPath = System.IO.Path.Combine(destinationFolderPath, subPath.Substring(1));
+                }
+
+                var dirInfo = new DirectoryInfo(destinationFolderPath);
+
+                if (!dirInfo.Exists)
+                {
+                    dirInfo.Create();
+                }
+
+                _archiveFileInfo.MoveTo(System.IO.Path.Combine(dirInfo.FullName, _archiveFileInfo.Name));
+            });
+        }
+
         public void Dispose()
         {
             try

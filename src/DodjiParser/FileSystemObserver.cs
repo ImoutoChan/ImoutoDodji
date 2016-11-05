@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using DataAccess;
 using DataAccess.Models;
@@ -9,6 +10,7 @@ using DodjiParser.Models;
 
 namespace DodjiParser
 {
+    // TODO replace
     public class FileSystemObserver
     {
         private struct Observer
@@ -23,26 +25,46 @@ namespace DodjiParser
         private readonly DataRepository _repository;
         private readonly List<Observer> _fsObservers = new List<Observer>();
         private List<Gallery> _savedGalleries;
+        private List<IFileSystemGallery> _processingGalleries = new List<IFileSystemGallery>();
 
         public FileSystemObserver(DataRepository repository)
         {
             _repository = repository;
+            _repository.CollectionChanged += _repository_CollectionChanged;
+            _repository.GalleriesChanged += _repository_GalleriesChanged;
             Init();
+        }
+
+        private async void _repository_GalleriesChanged(object sender, EventArgs e)
+        {
+            await ReloadGalleries();
+        }
+
+        private async void _repository_CollectionChanged(object sender, EventArgs e)
+        {
+            await ReloadFolders();
         }
 
         private async Task Init()
         {
-            await LoadGalleries();
-            await LoadFolders();
+            await ReloadGalleries();
+            await ReloadFolders();
         }
 
-        private async Task LoadGalleries()
+        private async Task ReloadGalleries()
         {
             _savedGalleries = await _repository.GetGalleries();
         }
 
-        private async Task LoadFolders()
+        private async Task ReloadFolders()
         {
+            foreach (var fsObserver in _fsObservers)
+            {
+                fsObserver.FolderObserver.CurrentStateUpdated -= FoOnCurrentStateUpdated;
+                fsObserver.FolderObserver.Dispose();
+            }
+            _fsObservers.Clear();
+
             var collections = await _repository.GetCollectionsWithFolders();
 
             foreach (var collection in collections)
@@ -64,21 +86,55 @@ namespace DodjiParser
             }
         }
 
-        private async void FoOnCurrentStateUpdated(object sender, FolderObserver.CurrentStateEventArgs currentStateEventArgs)
+        private async void FoOnCurrentStateUpdated(object sender,
+            FolderObserver.CurrentStateEventArgs currentStateEventArgs)
         {
+
             var observer = sender as FolderObserver;
             var galleries = currentStateEventArgs.FileSystemGalleries;
-
+            
             await ProcessGalleries(_fsObservers.First(x => x.FolderObserver == sender), galleries);
         }
 
         private async Task ProcessGalleries(Observer observer, List<IFileSystemGallery> galleries)
         {
-            var newGalleries = galleries.Where(g => _savedGalleries.Select(sg => sg.Path).Contains(g.Path));
-
+            var newGalleries = FilterGalleries(galleries, observer, _savedGalleries.Select(sg => sg.Path).ToList()).ToList();
+            lock (_processingGalleries)
+            {
+                newGalleries = FilterGalleries(newGalleries, observer, _processingGalleries.Select(sg => sg.Path).ToList()).ToList();
+                _processingGalleries.AddRange(newGalleries);
+            }
+            
             foreach (var fileSystemGallery in newGalleries)
             {
-                await SaveGallery(fileSystemGallery, observer);
+                try
+                {
+                    await SaveGallery(fileSystemGallery, observer);
+                }
+                catch (Exception ex)
+                {
+                    // TODO log
+                }
+                finally
+                {
+                    lock (_processingGalleries)
+                    {
+                        _processingGalleries.Remove(fileSystemGallery);
+                        fileSystemGallery.Dispose();
+                    }
+                }
+            }
+        }
+
+        private IEnumerable<IFileSystemGallery> FilterGalleries(IEnumerable<IFileSystemGallery> newGalleries, Observer observer, List<string> filterStrings)
+        {
+            foreach (var gallery in newGalleries)
+            {
+                var relativePath = observer.SourceFolder.KeepRelativePath ? gallery.Path.Substring(observer.SourceFolder.Path.Length) : gallery.Path.Split(new [] {Path.DirectorySeparatorChar}, StringSplitOptions.RemoveEmptyEntries).Last();
+                if (!filterStrings.Any(fs => fs.EndsWith(relativePath)))
+                {
+                    yield return gallery;
+                }
             }
         }
 
@@ -89,6 +145,11 @@ namespace DodjiParser
                 throw new ArgumentException($"Can't find {fileSystemGallery.Path} gallery.");
             }
 
+            if (observer.SourceFolder.Collection.DestinationFolder != null)
+            {
+                await fileSystemGallery.Move(observer.SourceFolder.Path, observer.SourceFolder.Collection.DestinationFolder.Path, observer.SourceFolder.KeepRelativePath);
+            }
+            
             var dbGallery = new Gallery
             {
                 Path = fileSystemGallery.Path,
@@ -100,7 +161,6 @@ namespace DodjiParser
                 PreviewPath = await fileSystemGallery.GeneratePreview(PreviewStoragePath),
                 StorageType = fileSystemGallery.StorageType
             };
-            fileSystemGallery.Dispose();
 
             await _repository.AddGallery(dbGallery);
         }

@@ -7,14 +7,17 @@ namespace DodjiParser
     {
         private DataRepository _repository;
         private FileSystemObserver _fileSystemObserver;
-
-        public Initializer()
+        
+        public Initializer(bool wipe = false)
         {
-            Init();
+            Init(wipe);
         }
 
-        private async Task Init()
+        public DataRepository Repository => _repository;
+
+        public void Init(bool wipe)
         {
+            DataRepository.WipeDatabase();
             _repository = new DataRepository();
             _fileSystemObserver = new FileSystemObserver(_repository);
         }

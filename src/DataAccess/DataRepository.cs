@@ -8,6 +8,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DataAccess
 {
+
+    /// <summary>
+    /// TODO Cache
+    /// </summary>
     public class DataRepository
     {
         public DataRepository()
@@ -77,6 +81,8 @@ namespace DataAccess
                 await db.Collections.AddAsync(new Collection {Name = name});
                 await db.SaveChangesAsync();
             }
+
+            OnCollectionChanged();
         }
 
         public async Task RemoveCollection(int collectionId)
@@ -92,6 +98,8 @@ namespace DataAccess
                 db.Collections.Remove(collection);
                 await db.SaveChangesAsync();
             }
+
+            OnCollectionChanged();
         }
 
         public async Task RenameCollection(int collectionId, string newName)
@@ -116,6 +124,8 @@ namespace DataAccess
                 collection.Name = newName;
                 await db.SaveChangesAsync();
             }
+
+            OnCollectionChanged();
         }
 
         public async Task<List<Collection>> GetCollectionsWithFolders()
@@ -150,6 +160,8 @@ namespace DataAccess
                 await db.SourceFolders.AddAsync(sourceFolder);
                 await db.SaveChangesAsync();
             }
+
+            OnCollectionChanged();
         }
 
         public async Task RemoveSourceFolder(int sourceFolderId)
@@ -165,6 +177,8 @@ namespace DataAccess
                 db.SourceFolders.Remove(sourceFolder);
                 await db.SaveChangesAsync();
             }
+
+            OnCollectionChanged();
         }
 
         public async Task UpdateSourceFolder(SourceFolder sourceFolder)
@@ -188,6 +202,8 @@ namespace DataAccess
                 
                 await db.SaveChangesAsync();
             }
+
+            OnCollectionChanged();
         }
 
         #endregion
@@ -210,6 +226,8 @@ namespace DataAccess
                 await db.DestinationFolders.AddAsync(destinationFolder);
                 await db.SaveChangesAsync();
             }
+
+            OnCollectionChanged();
         }
 
         public async Task RemoveDestinationFolder(int destinationFolderId)
@@ -225,6 +243,8 @@ namespace DataAccess
                 db.DestinationFolders.Remove(destinationFolder);
                 await db.SaveChangesAsync();
             }
+
+            OnCollectionChanged();
         }
 
         public async Task UpdateDestinationFolder(DestinationFolder destinationFolder)
@@ -246,18 +266,71 @@ namespace DataAccess
 
                 await db.SaveChangesAsync();
             }
+
+            OnCollectionChanged();
         }
 
         #endregion
 
+        #region Gallery Management
 
         public async Task AddGallery(Gallery gallery)
         {
-            throw new NotImplementedException();
+            using (var db = new DataContext())
+            {
+                var flag = await db.Galleries.AnyAsync(x => x.Path == gallery.Path);
+                if (flag)
+                {
+                    throw new ArgumentException($"Gallery with same path ({gallery.Path}) already exists.");
+                }
+
+                await db.Galleries.AddAsync(gallery);
+                await db.SaveChangesAsync();
+            }
+
+            OnGalleriesChanged();
         }
+
         public async Task<List<Gallery>> GetGalleries()
         {
-            throw new NotImplementedException();
+            using (var db = new DataContext())
+            {
+                return await db.Galleries.ToListAsync();
+            }
+        }
+
+        #endregion
+
+        public static async Task WipeDatabaseAsync()
+        {
+            using (var db = new DataContext())
+            {
+                await db.Database.EnsureDeletedAsync();
+                await db.Database.MigrateAsync();
+            }
+        }
+
+        public static void WipeDatabase()
+        {
+            using (var db = new DataContext())
+            {
+                db.Database.EnsureDeleted();
+                db.Database.Migrate();
+            }
+        }
+
+        public event EventHandler CollectionChanged;
+
+        protected virtual void OnCollectionChanged()
+        {
+            CollectionChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public event EventHandler GalleriesChanged;
+
+        protected virtual void OnGalleriesChanged()
+        {
+            GalleriesChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 }

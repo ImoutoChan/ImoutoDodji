@@ -76,7 +76,7 @@ namespace DodjiParser
     /// -- -- -- -- dodji_file3.gif
     /// -- -- -- -- dodji_file4.jpeg
     /// </summary>
-    public class FolderObserver
+    public class FolderObserver : IDisposable
     {
         #region Types
 
@@ -115,6 +115,8 @@ namespace DodjiParser
                     var state = UpdateCurrentState().ToList();
                     OnCurrentStateUpdated(state);
                 }
+                catch(Exception)
+                { }
                 finally
                 {
                     Monitor.Exit(_lockObject);
@@ -124,6 +126,11 @@ namespace DodjiParser
         }
 
         #endregion Constructor
+        
+        public void Dispose()
+        {
+            _timer.Change(Timeout.Infinite, Timeout.Infinite);
+        }
 
         #region Private methods
 

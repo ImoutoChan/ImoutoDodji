@@ -8,7 +8,6 @@ namespace DataAccess.Models
 
         public DataContext()
         {
-            Database.EnsureCreated();
             Database.Migrate();
         }
 
