@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 using DataAccess.Models;
 using Microsoft.EntityFrameworkCore;
@@ -91,8 +92,6 @@ namespace DataAccess
 
                 await db.Collections.AddAsync(collection);
                 await db.SaveChangesAsync();
-                var i = collection.SourceFolders;
-                var j = collection.DestinationFolder;
             }
 
             await CacheAdd(_cache.Collections, collection);
@@ -171,6 +170,7 @@ namespace DataAccess
                 await db.SaveChangesAsync();
             }
 
+            await ReFillCache<Collection>();
             OnCollectionChanged();
         }
 
@@ -188,6 +188,8 @@ namespace DataAccess
                 await db.SaveChangesAsync();
             }
 
+
+            await ReFillCache<Collection>();
             OnCollectionChanged();
         }
 
@@ -213,6 +215,8 @@ namespace DataAccess
                 await db.SaveChangesAsync();
             }
 
+
+            await ReFillCache<Collection>();
             OnCollectionChanged();
         }
 
@@ -233,9 +237,18 @@ namespace DataAccess
         {
             using (var db = new DataContext())
             {
+                var collection = await db.Collections.FindAsync(destinationFolder.CollectionId);
+                if (collection.DestinationFolder != null)
+                {
+                    // Replace?
+                    throw new AggregateException("This collection already contains destination folder");
+                }
+
                 await db.DestinationFolders.AddAsync(destinationFolder);
                 await db.SaveChangesAsync();
             }
+
+            await ReFillCache<Collection>();
 
             OnCollectionChanged();
         }
@@ -254,6 +267,7 @@ namespace DataAccess
                 await db.SaveChangesAsync();
             }
 
+            await ReFillCache<Collection>();
             OnCollectionChanged();
         }
 
@@ -277,6 +291,7 @@ namespace DataAccess
                 await db.SaveChangesAsync();
             }
 
+            await ReFillCache<Collection>();
             OnCollectionChanged();
         }
 
@@ -319,11 +334,42 @@ namespace DataAccess
 
             return _cache.Galleries;
         }
-        
+
         #endregion
 
-        #region Lists management
+        #region ParsingStates Management
         
+        public async Task<IEnumerable<ParsingState>> GetParsingStates(Expression<Func<ParsingState, bool>> predicate)
+        {
+            using (var db = new DataContext())
+            {
+                var pss = await db.ParsingStates.Where(predicate).ToListAsync();
+
+                foreach (var parsingState in pss)
+                {
+                    parsingState.Gallery = (await GetGalleries()).First(x => x.Id == parsingState.GalleryId);
+                }
+
+                return pss;
+            }
+        }
+
+        public async Task SetParsingStatus(int parsingStateId, GalleryState galleryState, string errorString = null)
+        {
+            using (var db = new DataContext())
+            {
+                var ps = await db.ParsingStates.FindAsync(parsingStateId);
+                ps.State = galleryState;
+                ps.DateTimeUpdated = DateTime.Now;
+                ps.ErrorString = errorString;
+                await db.SaveChangesAsync();
+            }
+        }
+
+        #endregion
+
+        #region Cache Management
+
         private async Task CacheAdd<T>(IList<T> cacheEntries, T entry)
         {
             await FillCache<T>();
@@ -369,6 +415,20 @@ namespace DataAccess
             }
             else // if (typeof(T) == typeof(Gallery)
             {
+                await FillGalleryCache();
+            }
+        }
+
+        private async Task ReFillCache<T>()
+        {
+            if (typeof(T) == typeof(Collection))
+            {
+                _cache.IsCollectionsInitialized = false;
+                await FillCollectionCache();
+            }
+            else // if (typeof(T) == typeof(Gallery)
+            {
+                _cache.IsGalleriesInitialized = false;
                 await FillGalleryCache();
             }
         }

@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using DataAccess.Models;
+using InfoParser.Models;
 using SharedModel;
 
 namespace ParserTest
@@ -31,13 +32,13 @@ namespace ParserTest
 
         private static async Task RunTests()
         {
-            //await ParserTest();
+            await ParserTest();
 
             //FolderObserverTest();
 
             //await TestObserver();
 
-            await TestDataAccess();
+            //await TestParser();
         }
 
 
@@ -108,6 +109,26 @@ namespace ParserTest
                 });
         }
 
+        private static async Task TestParser()
+        {
+            var init = await DodjiService.GetInstance(true);
+            await init.Repository.AddCollection("my collection");
+            var collection = (await init.Repository.GetCollections()).First();
+            //await init.Repository.AddDestinationFolder(
+            //    new DestinationFolder
+            //    {
+            //        CollectionId = collection.Id,
+            //        Path = "Y:\\!playgoround\\!dest_mixed3"
+            //    });
+            await init.Repository.AddSourceFolder(
+                new SourceFolder
+                {
+                    CollectionId = collection.Id,
+                    Path = "Y:\\!playgoround\\!source_files",
+                    KeepRelativePath = false
+                });
+        }
+
         private static async Task FolderObserverTest()
         {
             var obs = new FolderObserver(new DirectoryInfo(@"Y:\!!DodjiSource\!source"), ObservationType.All);
@@ -125,15 +146,16 @@ namespace ParserTest
 
         private static async Task ParserTest()
         {
-            var parser = EHentaiParser.Instance;
+            //var parser = new EHentaiParser(EhentaiType.Ehentai);
+            var parser = new ChaikaParser();
             //var gal = await parser.GetGallery(992385, "669d450607");
             //var tags = gal.Tags.ToList();
-            var gal = await parser.GetGallery(735011, "b020881a70");
+            var gal = await parser.GetGallery(2930);
             var tags = gal.Tags.ToList();
 
-            //var searchResult = await parser.SearchGalleries(GalleryCategory.Doujinshi | GalleryCategory.Manga, "sad");
+            var searchResult = await parser.SearchGalleries(GalleryCategory.Doujinshi | GalleryCategory.Manga, "sad");
 
-            //var i = searchResult.ToList();
+            var i = searchResult.ToList();
         }
     }
 }

@@ -14,6 +14,7 @@ namespace DataAccess.Models
         [Required]
         public DateTime DateTimeUpdated { get; set; }
 
+        public string ErrorString { get; set; }
 
         [Required]
         public int GalleryId { get; set; }

@@ -10,37 +10,16 @@ using Newtonsoft.Json;
 using NLog;
 using System.Net;
 using HtmlAgilityPack;
+using InfoParser.Models;
 using SharedModel;
 
 namespace InfoParser
 {
-    public class EHentaiParser
+    public class EHentaiParser : IParser
     {
-        #region Singleton
-
-        private static readonly EHentaiParser _instance = new EHentaiParser();
-
-        static EHentaiParser() { }
-
-        public static EHentaiParser Instance => _instance;
-
-        #endregion Singleton
 
         #region Types
-
-        public class GalleryInfo
-        {
-            public int Id { get; set; }
-
-            public string Token { get; set; }
-
-            public string Url { get; set; }
-
-            public string FullName { get; set; }
-
-            public string PreviewUrl { get; set; }
-        }
-
+        
         private enum RequestType
         {
             Get,
@@ -51,9 +30,11 @@ namespace InfoParser
 
         #region Consts
 
-
         private const string BASE_EHENTAI_URL = "http://g.e-hentai.org/";
+        private const string BASE_EXHENTAI_URL = "https://exhentai.org/";
         private const string API_URL = "/api.php";
+        private const int REQUEST_DELAY = 1;
+        private const int ERROR_REQUEST_DELAY = 30;
 
         #endregion Consts
 
@@ -61,21 +42,56 @@ namespace InfoParser
 
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private DateTime _lastAccess = DateTime.Now;
-        private readonly HttpClient _client = new HttpClient();
+        private readonly HttpClient _client;
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1);
+        private bool _lastRequestError = false;
+        private readonly EhentaiType _type;
 
         #endregion Fields
 
         #region Constructors
 
-        private EHentaiParser()
+        public EHentaiParser(EhentaiType type = EhentaiType.Ehentai, ExhentaiConfiguration configuration = null)
         {
-            _client.BaseAddress = new Uri(BASE_EHENTAI_URL);
+            _type = type;
+
+            switch (_type)
+            {
+                case EhentaiType.Ehentai:
+                    _client = new HttpClient {BaseAddress = new Uri(BASE_EHENTAI_URL)};
+                    break;
+
+                case EhentaiType.Exhentai:
+                    var handler = SetCookie(configuration);
+                    _client = new HttpClient(handler) { BaseAddress = new Uri(BASE_EXHENTAI_URL) };
+                    break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(type), type, null);
+            }
         }
 
         #endregion Constructors
 
         #region Private methods
+
+        private static HttpClientHandler SetCookie(ExhentaiConfiguration configuration)
+        {
+            if (configuration == null
+                                    || configuration.ipb_member_id == 0
+                                    || String.IsNullOrWhiteSpace(configuration.ipb_pass_hash))
+            {
+                throw new ArgumentException("Incorrect data in nameof(configuration)");
+            }
+            var handler = new HttpClientHandler { CookieContainer = new CookieContainer() };
+            handler.CookieContainer.Add(new Uri(BASE_EXHENTAI_URL),
+                                        new Cookie(nameof(configuration.ipb_member_id),
+                                                    configuration.ipb_member_id.ToString()));
+            handler.CookieContainer.Add(new Uri(BASE_EXHENTAI_URL),
+                                        new Cookie(nameof(configuration.ipb_pass_hash),
+                                                    configuration.ipb_pass_hash));
+            return handler;
+        }
 
         private async Task<string> EHentaiRequest(string path, RequestType type = RequestType.Get, 
                                                   Dictionary<string, string>  urlParameters = null, object jsonBody = null)
@@ -84,7 +100,7 @@ namespace InfoParser
 
             var interval = DateTime.Now - _lastAccess;
 
-            if (interval < new TimeSpan(0, 0, 0, 1))
+            if (interval < new TimeSpan(0, 0, 0, _lastRequestError ? ERROR_REQUEST_DELAY : REQUEST_DELAY))
             {
                 await Task.Delay(interval.Milliseconds);
             }
@@ -118,15 +134,18 @@ namespace InfoParser
                 }
 
                 Logger.Trace($"{type} request — url: {path}\nResponse: {responseString.Substring(0, 50)}");
+                _lastRequestError = false;
                 return responseString;
             }
             catch (HttpRequestException ex)
             {
+                _lastRequestError = true;
                 Logger.Error(ex, ex.Message);
                 throw;
             }
             catch (Exception ex)
             {
+                _lastRequestError = true;
                 Logger.Error(ex, ex.Message);
                 throw;
             }
@@ -169,7 +188,10 @@ namespace InfoParser
 
         private GalleryInfo ParseGallery(HtmlNode trNode)
         {
-            var galleryInfo = new GalleryInfo();
+            var galleryInfo = new GalleryInfo
+            {
+                Source = (_type == EhentaiType.Exhentai) ? Source.Exhentai : Source.Ehentai
+            };
 
             var text = trNode.InnerHtml;
             var previewNode = trNode.SelectSingleNode("td/div/div[@class=\"it2\"]/img");
@@ -205,7 +227,7 @@ namespace InfoParser
 
         #region Public methods
 
-        public async Task<Gallery> GetGallery(int id, string token)
+        public async Task<IGallery> GetGallery(int id, string token)
         {
             var result = await EHentaiRequest(API_URL, RequestType.Post, jsonBody: new GalleryRequestJson(id, token));
 
@@ -237,7 +259,13 @@ namespace InfoParser
 
             return gals;
         }
-
+        
         #endregion Public methods
+    }
+
+    public enum EhentaiType
+    {
+        Exhentai,
+        Ehentai
     }
 }
