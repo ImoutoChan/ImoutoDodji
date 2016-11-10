@@ -27,7 +27,7 @@ namespace ParserTest
             }
             catch (Exception ex)
             {
-                
+
                 throw;
             }
         }
@@ -164,10 +164,16 @@ namespace ParserTest
 
         private static async Task LocalDbTest()
         {
-            using (var db = new LocalDbSourceContext())
+            try
             {
-                var i = await db.ViewerGallery.Include(x => x.ViewerGalleryTags).ThenInclude(x => x.Tag).ToListAsync();
-                Console.WriteLine(i.Count());
+                var p = new LocalDbParser();
+                var g = await p.GetGallery(709432);
+                var searchResult = await p.SearchGalleries(searchString: "sad");
+            }
+            catch (Exception ex)
+            {
+
+                throw;
             }
         }
     }

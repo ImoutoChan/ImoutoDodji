@@ -16,7 +16,7 @@ namespace InfoParser.LocalDatabase
         public string Category { get; set; }
         public string Uploader { get; set; }
         public string Posted { get; set; }
-        public long? Filecount { get; set; }
+        public int? Filecount { get; set; }
         public long? Filesize { get; set; }
         public string Expunged { get; set; }
         public string Rating { get; set; }

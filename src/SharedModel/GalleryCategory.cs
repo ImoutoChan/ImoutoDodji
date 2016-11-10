@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Reflection;
 using System.Runtime.Serialization;
 
 namespace SharedModel
@@ -42,5 +44,31 @@ namespace SharedModel
         Private                                         = 1 << 10,
 
         All                                             = 2047
+    }
+
+    public static class Extensions
+    {
+        public static T ToEnum<T>(this string str)
+        {
+            var enumType = typeof(T);
+            foreach (var name in Enum.GetNames(enumType))
+            {
+                var enumMemberAttribute = 
+                    ((EnumMemberAttribute[])enumType.GetField(name).GetCustomAttributes(typeof(EnumMemberAttribute), true)).SingleOrDefault();
+                if (enumMemberAttribute?.Value == str)
+                {
+                    return (T) Enum.Parse(enumType, name);
+                }
+            }
+            return default(T);
+        }
+
+        public static string ToEnumString<T>(this T type)
+        {
+            var enumType = typeof(T);
+            var name = Enum.GetName(enumType, type);
+            var enumMemberAttribute = ((EnumMemberAttribute[])enumType.GetField(name).GetCustomAttributes(typeof(EnumMemberAttribute), true)).Single();
+            return enumMemberAttribute.Value;
+        }
     }
 }
