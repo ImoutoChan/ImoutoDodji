@@ -7,7 +7,9 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using DataAccess.Models;
+using InfoParser.LocalDatabase;
 using InfoParser.Models;
+using Microsoft.EntityFrameworkCore;
 using SharedModel;
 
 namespace ParserTest
@@ -32,7 +34,9 @@ namespace ParserTest
 
         private static async Task RunTests()
         {
-            await ParserTest();
+            await LocalDbTest();
+
+            //await ParserTest();
 
             //FolderObserverTest();
 
@@ -156,6 +160,15 @@ namespace ParserTest
             var searchResult = await parser.SearchGalleries(GalleryCategory.Doujinshi | GalleryCategory.Manga, "sad");
 
             var i = searchResult.ToList();
+        }
+
+        private static async Task LocalDbTest()
+        {
+            using (var db = new LocalDbSourceContext())
+            {
+                var i = await db.ViewerGallery.Include(x => x.ViewerGalleryTags).ThenInclude(x => x.Tag).ToListAsync();
+                Console.WriteLine(i.Count());
+            }
         }
     }
 }
