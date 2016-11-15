@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using DataAccess;
 using DataAccess.Models;
 using InfoParser;
+using InfoParser.Models;
 using NLog.LayoutRenderers;
 
 namespace DodjiParser
@@ -34,7 +35,7 @@ namespace DodjiParser
         #region Fields
 
         private readonly DataRepository _repository;
-        private EHentaiParser _eHentaiParser;
+        private List<IParser> _parserList = new List<IParser>();
         private readonly List<ParsingState> _enqueuedParsingStates = new List<ParsingState>();
         private readonly Queue<ParsingState> _queue = new Queue<ParsingState>();
         private object _queueLocker = new object();
@@ -52,22 +53,40 @@ namespace DodjiParser
 
         #region Private methods
 
-        private async Task Initialize(ParserType type = ParserType.Exhentai)
+        private async Task Initialize()
         {
-            // TODO
-            //switch (type)
-            //{
-            //    case ParserType.Ehentai:
-            //        _eHentaiParser = new EHentaiParser();
-            //        _repository.GalleriesChanged += RepositoryOnGalleriesChanged;
-            //        break;
-            //    case ParserType.Exhentai:
-            //        break;
-            //    case ParserType.Chaika:
-            //        break;
-            //    case ParserType.LocalDatabase:
-            //        break;
-            //}
+            try
+            {
+                var localDbParser = new LocalDbParser();
+                _parserList.Add(localDbParser);
+            }
+            catch (Exception)
+            {
+                // TODO log
+            }
+
+            try
+            {
+                var chaikaParser = new ChaikaParser();
+                _parserList.Add(chaikaParser);
+            }
+            catch (Exception)
+            {
+                // TODO log
+            }
+
+            try
+            {
+                // TODO select if login/pass from exhentai
+                var eHentaiParser = new EHentaiParser();
+                _parserList.Add(eHentaiParser);
+            }
+            catch (Exception)
+            {
+                // TODO log
+            }
+
+            _repository.GalleriesChanged += RepositoryOnGalleriesChanged;
 
             await LoadNewGalleries();
         }
@@ -157,32 +176,47 @@ namespace DodjiParser
         {
             var searchFor = currentParsingState.Gallery.Name;
 
-            var searchResult = (await _eHentaiParser.SearchGalleries(searchString: searchFor)).ToList();
+            for (var parserId = 0; parserId < _parserList.Count; parserId++)
+            {
+                var currentParset = _parserList[parserId];
+                var isLastParser = parserId == _parserList.Count - 1;
 
-            if (!searchResult.Any())
-            {
-                await _repository.SetParsingStatus(currentParsingState.Id, GalleryState.SearchNotFound);
-            }
-            else if (searchResult.Count() > 1)
-            {
-                // TODO Fill search results
-                await _repository.SetParsingStatus(currentParsingState.Id, GalleryState.SearchFoundAndWaitingForSelect);
-            }
-            else // if (searchResult.Count() == 1)
-            {
-                await _repository.SetParsingStatus(currentParsingState.Id, GalleryState.SearchFoundAndSelected);
-                var searchResultEntry = searchResult.First();
+                var searchResult = (await currentParset.SearchGalleries(searchString: searchFor)).ToList();
 
-                await ParseGallery(currentParsingState, searchResultEntry.Id, searchResultEntry.Token);
+                if (!searchResult.Any())
+                {
+                    if (isLastParser)
+                    {
+                        await _repository.SetParsingStatus(currentParsingState.Id, GalleryState.SearchNotFound);
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                }
+                else if (searchResult.Count() > 1)
+                {
+                    // TODO Fill search results
+                    await _repository.SetParsingStatus(currentParsingState.Id, GalleryState.SearchFoundAndWaitingForSelect);
+                    break;
+                }
+                else // if (searchResult.Count() == 1)
+                {
+                    await _repository.SetParsingStatus(currentParsingState.Id, GalleryState.SearchFoundAndSelected);
+                    var searchResultEntry = searchResult.First();
+
+                    await ParseGallery(_parserList[parserId], currentParsingState, searchResultEntry.Id, searchResultEntry.Token);
+                    break;
+                }
             }
         }
 
-        private async Task ParseGallery(ParsingState currentParsingState, int id, string token)
+        private async Task ParseGallery(IParser parser, ParsingState currentParsingState, int id, string token)
         {
             try
             {
                 // TODO parse gallery
-                var galleryResult = await _eHentaiParser.GetGallery(id, token);
+                var galleryResult = await parser.GetGallery(id, token);
             }
             catch (Exception ex)
             {
