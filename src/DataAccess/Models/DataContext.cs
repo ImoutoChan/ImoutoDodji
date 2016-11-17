@@ -35,6 +35,8 @@ namespace DataAccess.Models
 
         public DbSet<ParsingState> ParsingStates { get; set; }
 
+        public DbSet<SearchResult> SearchResults { get; set; }
+
         #endregion
 
         #region Configuration

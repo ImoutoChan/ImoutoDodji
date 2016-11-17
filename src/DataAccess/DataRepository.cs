@@ -547,5 +547,18 @@ namespace DataAccess
         }
 
         #endregion
+
+        #region SearchResults
+
+        public async Task AddSearchResults(IEnumerable<SearchResult> searchResults)
+        {
+            using (var db = new DataContext())
+            {
+                await db.SearchResults.AddRangeAsync(searchResults);
+                await db.SaveChangesAsync();
+            }
+        }
+
+        #endregion
     }
 }

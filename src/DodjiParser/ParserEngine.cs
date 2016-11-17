@@ -194,21 +194,43 @@ namespace DodjiParser
                         continue;
                     }
                 }
-                else if (searchResult.Count() > 1)
+                else if (searchResult.Count > 1)
                 {
-                    // TODO Fill search results
-                    await _repository.SetParsingStatus(currentParsingState.Id, GalleryState.SearchFoundAndWaitingForSelect);
+                    // TODO selection
+                    Task.WaitAll(
+                        _repository.AddSearchResults(searchResult.Select(x => GetGalleryInfo(x, currentParsingState))),
+                        _repository.SetParsingStatus(currentParsingState.Id, GalleryState.SearchFoundAndWaitingForSelect));
                     break;
                 }
                 else // if (searchResult.Count() == 1)
                 {
-                    await _repository.SetParsingStatus(currentParsingState.Id, GalleryState.SearchFoundAndSelected);
-                    var searchResultEntry = searchResult.First();
+                    Task.WaitAll(
+                        _repository.AddSearchResults(searchResult.Select(x => GetGalleryInfo(x, currentParsingState, true))), 
+                        _repository.SetParsingStatus(currentParsingState.Id, GalleryState.SearchFoundAndSelected)
+                        );
+                    var searchResultEntry = searchResult.Single();
 
-                    await ParseGallery(_parserList[parserId], currentParsingState, searchResultEntry.Id, searchResultEntry.Token);
+                    // not awaited
+                    ParseGallery(_parserList[parserId], currentParsingState, searchResultEntry.Id, searchResultEntry.Token);
                     break;
                 }
             }
+        }
+
+        private SearchResult GetGalleryInfo(GalleryInfo x, ParsingState currentParsingState, bool isSelected = false)
+        {
+            return new SearchResult
+            {
+                GalleryId = x.Id,
+                Token = x.Token,
+                FullName = x.FullName,
+                Url = x.Url,
+                PreviewUrl = 
+                x.PreviewUrl,
+                ParsingStateId = currentParsingState.Id,
+                Source = (DataAccess.Models.Source)(int)x.Source,
+                IsSelected = isSelected
+            };
         }
 
         private async Task ParseGallery(IParser parser, ParsingState currentParsingState, int id, string token)
@@ -217,6 +239,10 @@ namespace DodjiParser
             {
                 // TODO parse gallery
                 var galleryResult = await parser.GetGallery(id, token);
+
+
+
+                await _repository.SetParsingStatus(currentParsingState.Id, GalleryState.ParsingParsed);
             }
             catch (Exception ex)
             {
