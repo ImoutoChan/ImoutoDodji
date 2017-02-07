@@ -12,3 +12,4 @@ src/InfoParser/obj/
 src/InfoParser/bin/
 src/SharedModel/bin/
 src/SharedModel/obj/
+src/ParserTest/configuration.xml

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DataAccess;
+using DodjiParser.Models;
 using InfoParser;
 using InfoParser.Models;
 using NLog;
@@ -59,8 +60,9 @@ namespace DodjiParser
 
             try
             {
-                // TODO select if login/pass from exhentai
-                var eHentaiParser = new EHentaiParser();
+                var eHentaiParser = Configuration.Instance.ExhentaiConfiguration != null 
+                    ? new EHentaiParser(EhentaiType.Exhentai, Configuration.Instance.ExhentaiConfiguration) 
+                    : new EHentaiParser();
                 _parserList.Add(eHentaiParser);
             }
             catch (Exception ex)

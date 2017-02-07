@@ -17,7 +17,6 @@ namespace InfoParser
 {
     public class EHentaiParser : IParser
     {
-
         #region Types
         
         private enum RequestType

@@ -10,6 +10,14 @@
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="logs\**" />
+    <Compile Remove="Thumbs\**" />
+    <EmbeddedResource Remove="logs\**" />
+    <EmbeddedResource Remove="Thumbs\**" />
+    <None Remove="logs\**" />
+    <None Remove="Thumbs\**" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\DataAccess\DataAccess.csproj" />
     <ProjectReference Include="..\DodjiParser\DodjiParser.csproj" />
     <ProjectReference Include="..\InfoParser\InfoParser.csproj" />

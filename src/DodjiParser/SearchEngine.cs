@@ -50,7 +50,7 @@ namespace DodjiParser
 
         protected override async Task ProcessParsingState(ParsingState currentParsingState)
         {
-            var searchFor = currentParsingState.Gallery.Name;
+            var searchFor = currentParsingState.Gallery.Name.Replace("_", " ");
 
 
             for (var parserId = 0; parserId < _parsersRepository.Parsers.Count; parserId++)

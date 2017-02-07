@@ -18,7 +18,6 @@ namespace ParserTest
     {
         public static void Main(string[] args)
         {
-
             try
             {
                 RunTests();
