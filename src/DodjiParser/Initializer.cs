@@ -24,8 +24,7 @@ namespace DodjiParser
         }
 
         public DataRepository Repository => _repository;
-
-
+        
         private async Task Initialize(bool wipe)
         {
             _repository = await DataRepository.GetInstance(wipe);

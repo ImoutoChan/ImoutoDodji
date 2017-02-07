@@ -16,6 +16,7 @@
     <PackageReference Include="ImageSharp" Version="1.0.0-alpha7" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="1.1.0-preview4-final" />
     <PackageReference Include="NETStandard.Library" Version="1.6.1" />
+    <PackageReference Include="NLog.Extensions.Logging" Version="1.0.0-rtm-beta1" />
     <PackageReference Include="SharpCompress" Version="0.15.1" />
     <PackageReference Include="System.Security.Cryptography.Algorithms" Version="4.3.0" />
   </ItemGroup>

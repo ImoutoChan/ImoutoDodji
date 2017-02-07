@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using DataAccess;
 using InfoParser;
 using InfoParser.Models;
+using NLog;
 using Source = DataAccess.Models.Source;
 
 namespace DodjiParser
@@ -20,6 +21,8 @@ namespace DodjiParser
             return pe;
         }
 
+        private static Logger Logger = LogManager.GetCurrentClassLogger();
+
         #endregion
 
         private readonly DataRepository _repository;
@@ -32,14 +35,16 @@ namespace DodjiParser
 
         private async Task Initialize()
         {
+            Logger.Info("Parsers initialization is started.");
+
             try
             {
                 var localDbParser = new LocalDbParser();
                 _parserList.Add(localDbParser);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // TODO log
+                Logger.Error(ex, "Cannot create localdb parser. Make sure that the file 'exhentai.db' exists in the root of program folder.");
             }
 
             try
@@ -47,9 +52,9 @@ namespace DodjiParser
                 var chaikaParser = new ChaikaParser();
                 _parserList.Add(chaikaParser);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // TODO log
+                Logger.Error(ex, "Cannot create chaika parser.");
             }
 
             try
@@ -58,9 +63,9 @@ namespace DodjiParser
                 var eHentaiParser = new EHentaiParser();
                 _parserList.Add(eHentaiParser);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // TODO log
+                Logger.Error(ex, "Cannot create e-hentai parser.");
             }
         }
 
