@@ -36,7 +36,7 @@ namespace DodjiParser
             _searchEngine = await SearchEngine.GetInstance(_repository, _parsersRepository);
 
             _parserEngine = await ParserEngine.GetInstance(_repository, _parsersRepository);
-            _searchEngine.NewGalleriesSelected += (sender, args) => _parserEngine.OnNewGalleriesSelected();
+            _searchEngine.ParsingStateUpdated += async (sender, args) => await _parserEngine.UpdateStates();
         }
     }
 }
