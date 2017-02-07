@@ -8,12 +8,15 @@ using DataAccess.Models;
 using InfoParser;
 using InfoParser.Models;
 using InfoParser.Models.JSON;
+using NLog;
 using Source = DataAccess.Models.Source;
 
 namespace DodjiParser
 {
     internal class ParserEngine : ParsingStateEngineBase
     {
+        protected override Logger Logger { get; } = LogManager.GetCurrentClassLogger();
+
         #region Static members
 
         public static async Task<ParserEngine> GetInstance(DataRepository repository, ParsersRepository parsersRepository)
@@ -38,6 +41,8 @@ namespace DodjiParser
         protected override async Task Initialize()
         {
             await base.Initialize();
+
+            Logger.Trace("Initialized");
         }
 
         public override async Task UpdateStates()
@@ -58,6 +63,9 @@ namespace DodjiParser
             try
             {
                 // TODO Save results to tag/metadata
+
+
+                Logger.Info($"Parsing gallery info {currentParsingState.Gallery.Name} from {parser.GetType().Name}...");
                 var galleryResult = await parser.GetGallery(id, token);
                 
                 await _repository.SetParsedGallery(GetParsedGallery(galleryResult, parser, currentParsingState));
@@ -69,6 +77,7 @@ namespace DodjiParser
             catch (Exception ex)
             {
                 await _repository.SetParsingStatus(currentParsingState.Id, GalleryState.ParsingError, ex.Message);
+                Logger.Error(ex, $"Error in parsing gallery info {currentParsingState.Gallery.Name} from {parser.GetType().Name}...");
             }
         }
 

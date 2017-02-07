@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using DataAccess.Models;
 using ImageSharp;
+using NLog;
 using SharpCompress.Archives;
 using SharpCompress.Readers;
 
@@ -193,6 +194,9 @@ namespace DodjiParser.Models
 
     public class ArchiveFileSystemGallery : FileSystemGallery, IFileSystemGallery
     {
+        private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
+
+
         private const string TempArchivePath = "Temp";
         private List<FileInfo> _images;
         private readonly object _imagesLock = new object();
@@ -357,7 +361,7 @@ namespace DodjiParser.Models
             }
             catch (Exception ex)
             {
-                // TODO log
+                Logger.Error(ex, "Error in cleaning after archive processing.");
             }
         }
     }

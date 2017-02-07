@@ -5,13 +5,16 @@ using System.Threading;
 using System.Threading.Tasks;
 using DataAccess;
 using DataAccess.Models;
+using NLog;
 
 namespace DodjiParser
 {
     internal abstract class ParsingStateEngineBase
     {
+        protected abstract Logger Logger { get; }
+
         #region Fields
-        
+
         protected readonly DataRepository _repository;
         protected readonly ParsersRepository _parsersRepository;
         protected readonly List<ParsingState> _enqueuedParsingStates = new List<ParsingState>();
@@ -46,19 +49,22 @@ namespace DodjiParser
             var parsingStates = await _repository.GetParsingStates(x => x.State == state);
 
             lock (_queue)
-            lock (_enqueuedParsingStates)
-            {
-                var newParsingStates = parsingStates
-                    .Where(ps => _enqueuedParsingStates.All(eps => eps.GalleryId != ps.Gallery.Id))
-                    .ToList();
-
-                _enqueuedParsingStates.AddRange(newParsingStates);
-
-                foreach (var newParsingState in newParsingStates)
+                lock (_enqueuedParsingStates)
                 {
-                    _queue.Enqueue(newParsingState);
+                    var newParsingStates = parsingStates
+                        .Where(ps => _enqueuedParsingStates.All(eps => eps.GalleryId != ps.Gallery.Id))
+                        .ToList();
+
+                    _enqueuedParsingStates.AddRange(newParsingStates);
+
+                    var count = newParsingStates.Count;
+                    Logger.Info($"{count} new parsing states are added to the queue.");
+
+                    foreach (var newParsingState in newParsingStates)
+                    {
+                        _queue.Enqueue(newParsingState);
+                    }
                 }
-            }
 
             await RestartQueueProcess();
         }
@@ -70,21 +76,28 @@ namespace DodjiParser
                 return;
             }
 
+            Logger.Info("ParsingState queue is being processed.");
             try
             {
                 bool whileFlag;
+                int countTotal;
                 lock (_queue)
                 {
-                    whileFlag = _queue.Any();
+                    countTotal = _queue.Count;
+                    whileFlag = countTotal > 0;
+
                 }
 
+                int counter = 0;
                 while (whileFlag)
                 {
+                    counter++;
                     ParsingState currentParsingState;
                     lock (_queue)
                     {
                         currentParsingState = _queue.Dequeue();
                     }
+                    Logger.Info($"ParsingState ({counter} / {countTotal}): {currentParsingState.State} : {currentParsingState.Gallery.Name}");
 
                     try
                     {
@@ -96,7 +109,7 @@ namespace DodjiParser
                             _repository.SetParsingStatus(currentParsingState.Id,
                                 GalleryState.SearchError,
                                 ex.Message);
-                        // TODO log
+                        Logger.Error(ex, "ParsingState is skipped.");
                     }
                     finally
                     {
@@ -115,6 +128,7 @@ namespace DodjiParser
             }
             finally
             {
+                Logger.Info("ParsingState queue completed processing.");
                 _queueSemaphore.Release();
             }
         }

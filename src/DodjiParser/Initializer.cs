@@ -1,11 +1,14 @@
 ﻿using System.Threading.Tasks;
 using DataAccess;
+using NLog;
 using Remotion.Linq.Parsing;
 
 namespace DodjiParser
 {
     public class DodjiService
     {
+        protected static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
+
         public static async Task<DodjiService> GetInstance(bool wipe = false)
         {
             var ds = new DodjiService();
@@ -27,6 +30,8 @@ namespace DodjiParser
         
         private async Task Initialize(bool wipe)
         {
+            Logger.Info($"Starting initialization...");
+
             _repository = await DataRepository.GetInstance(wipe);
             _parsersRepository = await ParsersRepository.GetInstance(_repository);
 
@@ -36,6 +41,8 @@ namespace DodjiParser
 
             _parserEngine = await ParserEngine.GetInstance(_repository, _parsersRepository);
             _searchEngine.ParsingStateUpdated += async (sender, args) => await _parserEngine.UpdateStates();
+
+            Logger.Info($"Initialization is finished.");
         }
     }
 }

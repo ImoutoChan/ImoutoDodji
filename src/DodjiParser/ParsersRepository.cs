@@ -13,15 +13,15 @@ namespace DodjiParser
     internal class ParsersRepository
     {
         #region Static members
-        
+
+        private static Logger Logger = LogManager.GetCurrentClassLogger();
+
         public static async Task<ParsersRepository> GetInstance(DataRepository repository)
         {
             var pe = new ParsersRepository(repository);
             await pe.Initialize();
             return pe;
         }
-
-        private static Logger Logger = LogManager.GetCurrentClassLogger();
 
         #endregion
 
@@ -35,7 +35,7 @@ namespace DodjiParser
 
         private async Task Initialize()
         {
-            Logger.Info("Parsers initialization is started.");
+            Logger.Info("Parsers initialization");
 
             try
             {
@@ -67,6 +67,8 @@ namespace DodjiParser
             {
                 Logger.Error(ex, "Cannot create e-hentai parser.");
             }
+
+
         }
 
         public List<IParser> Parsers => _parserList;

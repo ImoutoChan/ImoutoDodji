@@ -6,11 +6,14 @@ using System.Threading.Tasks;
 using DataAccess;
 using DataAccess.Models;
 using DodjiParser.Models;
+using NLog;
 
 namespace DodjiParser
 {
     public class FileSystemObserver
     {
+        private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
+
         #region Static members
 
         public static async Task<FileSystemObserver> GetInstance(DataRepository repository)
@@ -43,7 +46,7 @@ namespace DodjiParser
         private readonly DataRepository _repository;
         private readonly List<Observer> _fsObservers = new List<Observer>();
         private List<Gallery> _savedGalleries;
-        private List<IFileSystemGallery> _processingGalleries = new List<IFileSystemGallery>();
+        private readonly List<IFileSystemGallery> _processingGalleries = new List<IFileSystemGallery>();
 
         #endregion
 
@@ -74,11 +77,14 @@ namespace DodjiParser
         {
             await ReloadGalleries();
             await ReloadFolders();
+
+            Logger.Info($"Initialized.");
         }
 
         private async Task ReloadGalleries()
         {
             _savedGalleries = (await _repository.GetGalleries()).ToList();
+            Logger.Info($"Saved galleries: {_savedGalleries.Count}.");
         }
 
         private async Task ReloadFolders()
@@ -99,9 +105,10 @@ namespace DodjiParser
                     var di = new DirectoryInfo(collectionSourceFolder.Path);
                     if (!di.Exists)
                     {
-                        // TODO log
+                        Logger.Error($"{collectionSourceFolder.Path} doesn't exist.");
                         continue;
                     }
+                    Logger.Info($"Added to observer: {collectionSourceFolder.Path} : {collectionSourceFolder.ObservationType}.");
 
                     var fo = new FolderObserver(di, collectionSourceFolder.ObservationType);
                     fo.CurrentStateUpdated += FoOnCurrentStateUpdated;
@@ -117,7 +124,7 @@ namespace DodjiParser
 
             var observer = sender as FolderObserver;
             var galleries = currentStateEventArgs.FileSystemGalleries;
-            
+
             await ProcessGalleries(_fsObservers.First(x => x.FolderObserver == sender), galleries);
         }
 
@@ -128,6 +135,11 @@ namespace DodjiParser
             {
                 newGalleries = FilterGalleries(newGalleries, observer, _processingGalleries.Select(sg => sg.Path).ToList()).ToList();
                 _processingGalleries.AddRange(newGalleries);
+
+                if (newGalleries.Count > 0)
+                {
+                    Logger.Info($"{newGalleries.Count} new galleries added to queue.");
+                }
             }
             
             foreach (var fileSystemGallery in newGalleries)
@@ -138,7 +150,7 @@ namespace DodjiParser
                 }
                 catch (Exception ex)
                 {
-                    // TODO log
+                    Logger.Error(ex, "Cannot save gallery to db.");
                 }
                 finally
                 {
@@ -153,6 +165,7 @@ namespace DodjiParser
             if (newGalleries.Count > 0)
             {
                 OnNewGalleriesAppeared();
+                Logger.Info($"{newGalleries.Count} galleries were processed.");
             }
         }
 
@@ -172,7 +185,7 @@ namespace DodjiParser
         {
             if (!fileSystemGallery.Exists)
             {
-                throw new ArgumentException($"Can't find {fileSystemGallery.Path} gallery.");
+                throw new ArgumentException($"{fileSystemGallery.Path} gallery doesn't exist.");
             }
 
             if (observer.SourceFolder.Collection.DestinationFolder != null)
