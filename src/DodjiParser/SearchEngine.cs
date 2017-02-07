@@ -60,7 +60,7 @@ namespace DodjiParser
 
                 Logger.Info($"Searching for {searchFor} in {currentParset.GetType().Name}...");
                 var searchResult = (await currentParset.SearchGalleries(searchString: searchFor)).ToList();
-                Logger.Info($"{searchResult.Count} results found.");
+                Logger.Info($"{(searchResult.Count == 0 ? "No" : searchResult.Count.ToString())} results found.");
 
                 if (!searchResult.Any())
                 {

@@ -74,11 +74,9 @@ namespace InfoParser
 
             try
             {
-                Logger.Trace($"Get request — url: {path}");
+                Logger.Trace($"Get request — url: {_client.BaseAddress + path}");
 
                 var responseString = await _client.GetStringAsync(path + ToQueryString(urlParameters));
-                
-                Logger.Trace($"Get request — url: {path}\nResponse: {responseString.Substring(0, 50)}");
                 return responseString;
             }
             catch (HttpRequestException ex)

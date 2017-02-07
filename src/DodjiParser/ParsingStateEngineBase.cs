@@ -80,11 +80,9 @@ namespace DodjiParser
             try
             {
                 bool whileFlag;
-                int countTotal;
                 lock (_queue)
                 {
-                    countTotal = _queue.Count;
-                    whileFlag = countTotal > 0;
+                    whileFlag = _queue.Any();
 
                 }
 
@@ -97,7 +95,7 @@ namespace DodjiParser
                     {
                         currentParsingState = _queue.Dequeue();
                     }
-                    Logger.Info($"ParsingState ({counter} / {countTotal}): {currentParsingState.State} : {currentParsingState.Gallery.Name}");
+                    Logger.Info($"ParsingState ({counter} | {_queue.Count}): {currentParsingState.State} : {currentParsingState.Gallery.Name}");
 
                     try
                     {

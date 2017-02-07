@@ -7,7 +7,7 @@ namespace DodjiParser
 {
     public class DodjiService
     {
-        protected static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
+        private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
 
         public static async Task<DodjiService> GetInstance(bool wipe = false)
         {

@@ -30,7 +30,7 @@ namespace InfoParser
 
         #region Consts
 
-        private const string BASE_EHENTAI_URL = "http://g.e-hentai.org/";
+        private const string BASE_EHENTAI_URL = "https://e-hentai.org/";
         private const string BASE_EXHENTAI_URL = "https://exhentai.org/";
         private const string API_URL = "/api.php";
         private const int REQUEST_DELAY = 1;
@@ -109,24 +109,28 @@ namespace InfoParser
 
             try
             {
-                Logger.Trace($"{type} request — url: {path}; body: {jsonBody ?? "Empty"}");
 
                 string responseString;
 
+                var requestUri = path + ToQueryString(urlParameters);
+
                 if (type == RequestType.Get)
                 {
-                    var result = await _client.GetStringAsync(path + ToQueryString(urlParameters));
+                    Logger.Trace($"{type} request — url: {_client.BaseAddress + requestUri}");
+                    var result = await _client.GetStringAsync(requestUri);
 
                     responseString = result;
                 }
                 // type == RequestType.Post
                 else
                 {
+                    Logger.Trace($"{type} request — url: {_client.BaseAddress + requestUri} ; body: {jsonBody ?? "Empty"}.");
+
                     var stringContent = new StringContent(jsonBody == null
                         ? String.Empty
                         : jsonBody.ToString());
 
-                    var result = await _client.PostAsync(path + ToQueryString(urlParameters), stringContent);
+                    var result = await _client.PostAsync(requestUri, stringContent);
                     result.EnsureSuccessStatusCode();
 
                     var responseStream = await result.Content.ReadAsStreamAsync();
@@ -134,20 +138,19 @@ namespace InfoParser
                     responseString = (new StreamReader(responseStream)).ReadToEnd();
                 }
 
-                Logger.Trace($"{type} request — url: {path}\nResponse: {responseString.Substring(0, 50)}");
                 _lastRequestError = false;
                 return responseString;
             }
             catch (HttpRequestException ex)
             {
                 _lastRequestError = true;
-                Logger.Error(ex, ex.Message);
+                Logger.Error(ex, "Http error.");
                 throw;
             }
             catch (Exception ex)
             {
                 _lastRequestError = true;
-                Logger.Error(ex, ex.Message);
+                Logger.Error(ex, "Request error.");
                 throw;
             }
             finally
