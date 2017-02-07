@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>netcoreapp1.0</TargetFramework>
     <AssemblyName>ParserTest</AssemblyName>
@@ -10,15 +9,12 @@
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\DataAccess\DataAccess.csproj" />
     <ProjectReference Include="..\DodjiParser\DodjiParser.csproj" />
     <ProjectReference Include="..\InfoParser\InfoParser.csproj" />
   </ItemGroup>
-
   <ItemGroup>
-    <PackageReference Include="Microsoft.NETCore.App" Version="1.0.3" />
+    <PackageReference Include="Microsoft.NETCore.App" Version="1.1.0" />
   </ItemGroup>
-
 </Project>
