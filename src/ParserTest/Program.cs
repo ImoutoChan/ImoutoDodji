@@ -34,7 +34,7 @@ namespace ParserTest
 
         private static async Task RunTests()
         {
-            await LocalDbTest();
+            //await LocalDbTest();
 
             //await ParserTest();
 
@@ -42,7 +42,7 @@ namespace ParserTest
 
             //await TestObserver();
 
-            //await TestParser();
+            await TestParser();
         }
 
 
