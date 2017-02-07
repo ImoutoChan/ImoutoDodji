@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using SharedModel;
 
 namespace InfoParser.Models
@@ -17,6 +18,8 @@ namespace InfoParser.Models
 
         long PostedDate { get; set; }
 
+        DateTime PostedDateTime { get; set; }
+
         double Rating { get; set; }
 
         IEnumerable<Tag> Tags { get; }
@@ -26,5 +29,7 @@ namespace InfoParser.Models
         string TitleJpn { get; set; }
 
         string Uploader { get; set; }
+
+        string Url { get; set; }
     }
 }

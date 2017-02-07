@@ -41,10 +41,7 @@ namespace InfoParser
                     .ThenInclude(vgt => vgt.Tag)
                     .FirstAsync(vg => vg.Gid == id.ToString());
 
-                var gallery = new ExGallery
-                {
-
-                };
+                var gallery = new ExGallery();
 
                 gallery.Category = dbGallery.Category.ToEnum<GalleryCategory>();
                 gallery.FileCount = dbGallery.Filecount ?? 0;

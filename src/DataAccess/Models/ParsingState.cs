@@ -25,5 +25,7 @@ namespace DataAccess.Models
 
         
         public List<SearchResult> SearchResults { get; set; }
+
+        public ParsedGallery ParsedGallery { get; set; }
     }
 }

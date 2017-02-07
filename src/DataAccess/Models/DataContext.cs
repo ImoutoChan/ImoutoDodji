@@ -37,6 +37,8 @@ namespace DataAccess.Models
 
         public DbSet<SearchResult> SearchResults { get; set; }
 
+        public DbSet<ParsedGallery> ParsedGalleries { get; set; }
+
         #endregion
 
         #region Configuration

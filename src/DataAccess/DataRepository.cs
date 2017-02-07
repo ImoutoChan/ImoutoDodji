@@ -30,7 +30,7 @@ namespace DataAccess
 
         #region Fields
 
-        private DataCache _cache = new DataCache();
+        private readonly DataCache _cache = new DataCache();
 
         #endregion
 
@@ -555,6 +555,27 @@ namespace DataAccess
             using (var db = new DataContext())
             {
                 await db.SearchResults.AddRangeAsync(searchResults);
+                await db.SaveChangesAsync();
+            }
+        }
+
+        public async Task<SearchResult> GetSingleSearchResult(int parsingStateId)
+        {
+            using (var db = new DataContext())
+            {
+                return await db.SearchResults.SingleAsync(x => x.IsSelected == true && x.ParsingStateId == parsingStateId);
+            }
+        }
+
+        #endregion
+
+        #region ParsedGalleries
+
+        public async Task SetParsedGallery(ParsedGallery parsedGallery)
+        {
+            using (var db = new DataContext())
+            {
+                await db.ParsedGalleries.AddAsync(parsedGallery);
                 await db.SaveChangesAsync();
             }
         }

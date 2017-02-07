@@ -45,7 +45,6 @@ namespace InfoParser
         private readonly HttpClient _client;
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1);
         private bool _lastRequestError = false;
-        private readonly EhentaiType _type;
 
         #endregion Fields
 
@@ -53,9 +52,9 @@ namespace InfoParser
 
         public EHentaiParser(EhentaiType type = EhentaiType.Ehentai, ExhentaiConfiguration configuration = null)
         {
-            _type = type;
+            Type = type;
 
-            switch (_type)
+            switch (Type)
             {
                 case EhentaiType.Ehentai:
                     _client = new HttpClient {BaseAddress = new Uri(BASE_EHENTAI_URL)};
@@ -72,6 +71,8 @@ namespace InfoParser
         }
 
         #endregion Constructors
+
+        public EhentaiType Type { get; }
 
         #region Private methods
 
@@ -190,7 +191,7 @@ namespace InfoParser
         {
             var galleryInfo = new GalleryInfo
             {
-                Source = (_type == EhentaiType.Exhentai) ? Source.Exhentai : Source.Ehentai
+                Source = (Type == EhentaiType.Exhentai) ? Source.Exhentai : Source.Ehentai
             };
 
             var text = trNode.InnerHtml;
@@ -231,7 +232,13 @@ namespace InfoParser
         {
             var result = await EHentaiRequest(API_URL, RequestType.Post, jsonBody: new GalleryRequestJson(id, token));
 
-            return JsonConvert.DeserializeObject<GalleryResponseJson>(result).GalleryList.FirstOrDefault();
+            var resultObj = JsonConvert.DeserializeObject<GalleryResponseJson>(result).GalleryList.FirstOrDefault();
+            resultObj.Url = (Type == EhentaiType.Ehentai
+                                ? BASE_EHENTAI_URL
+                                : BASE_EXHENTAI_URL)
+                                    + $"{id}/{token}/";
+            return resultObj;
+
         }
 
         public async Task<IEnumerable<GalleryInfo>> SearchGalleries(GalleryCategory categoriesForSearch = GalleryCategory.All, 

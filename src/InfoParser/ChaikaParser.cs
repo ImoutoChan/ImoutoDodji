@@ -31,7 +31,7 @@ namespace InfoParser
         private readonly HttpClient _client;
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1);
         private bool _lastRequestError = false;
-        private readonly Uri BASE_CHAIKA_URL = new Uri("https://panda.chaika.moe");
+        private readonly Uri BASE_CHAIKA_URL = new Uri("https://panda.chaika.moe/");
 
         #endregion Fields
 
@@ -177,7 +177,10 @@ namespace InfoParser
 
             var result = await ChaikaRequest(API_URL, urlParameters: dic);
 
-            return JsonConvert.DeserializeObject<ChaikaGallery>(result);
+            var resultObj = JsonConvert.DeserializeObject<ChaikaGallery>(result);
+            resultObj.Url = BASE_CHAIKA_URL + $"archive/{id}/";
+
+            return resultObj;
         }
 
         /// <summary>

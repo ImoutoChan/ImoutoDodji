@@ -26,6 +26,5 @@ namespace DataAccess.Models
         public int ParsingStateId { get; set; }
 
         public ParsingState ParsingState { get; set; }
-
     }
 }

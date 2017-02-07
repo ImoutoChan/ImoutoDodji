@@ -149,6 +149,11 @@ namespace DodjiParser
                     }
                 }
             }
+
+            if (newGalleries.Count > 0)
+            {
+                OnNewGalleriesAppeared();
+            }
         }
 
         private IEnumerable<IFileSystemGallery> FilterGalleries(IEnumerable<IFileSystemGallery> newGalleries, Observer observer, List<string> filterStrings)
@@ -191,5 +196,12 @@ namespace DodjiParser
         }
 
         #endregion
+
+        public event EventHandler NewGalleriesAppeared;
+
+        protected virtual void OnNewGalleriesAppeared()
+        {
+            NewGalleriesAppeared?.Invoke(this, EventArgs.Empty);
+        }
     }
 }

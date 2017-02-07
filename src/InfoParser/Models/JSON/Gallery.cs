@@ -32,6 +32,8 @@ namespace InfoParser.Models.JSON
         [JsonProperty("uploader")]
         public string Uploader { get; set; }
 
+        public string Url { get; set; }
+
         [JsonProperty("posted")]
         public long PostedDate { get; set; }
 

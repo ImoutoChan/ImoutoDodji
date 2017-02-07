@@ -23,8 +23,22 @@ namespace InfoParser.Models.JSON
         [JsonProperty("uploader")]
         public string Uploader { get; set; }
 
+        public string Url { get; set; }
+
         [JsonProperty("posted")]
         public long PostedDate { get; set; }
+
+        public DateTime PostedDateTime
+        {
+            get
+            {
+                return DateTimeOffset.FromUnixTimeSeconds(PostedDate).DateTime;
+            }
+            set
+            {
+                PostedDate = (long)(value.ToUniversalTime() - new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+            }
+        }
 
         [JsonProperty("filecount")]
         public int FileCount { get; set; }
